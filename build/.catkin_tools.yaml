@@ -1,0 +1,6 @@
+devel_space: /home/oswaldor/trochoids_ws/devel
+install: false
+install_space: /home/oswaldor/trochoids_ws/install
+profile: default
+source_space: /home/oswaldor/trochoids_ws/src
+workspace: /home/oswaldor/trochoids_ws

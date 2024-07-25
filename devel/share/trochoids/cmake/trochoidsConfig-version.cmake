@@ -1,0 +1,1 @@
+/home/oswaldor/trochoids_ws/devel/.private/trochoids/share/trochoids/cmake/trochoidsConfig-version.cmake

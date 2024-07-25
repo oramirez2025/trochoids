@@ -1,0 +1,12 @@
+[  0%] Built target _catkin_empty_exported_target
+[ 18%] Built target gtest
+[35m[1mScanning dependencies of target trochoids[0m
+[ 27%] [32mBuilding CXX object CMakeFiles/trochoids.dir/src/trochoids.cpp.o[0m
+[ 36%] [32m[1mLinking CXX shared library /home/oswaldor/trochoids_ws/devel/.private/trochoids/lib/libtrochoids.so[0m
+[ 63%] Built target trochoids
+[35m[1mScanning dependencies of target trochoids-test[0m
+[ 72%] [32mBuilding CXX object CMakeFiles/trochoids-test.dir/test/unit_test_trochoids.cpp.o[0m
+[ 81%] [32mBuilding CXX object CMakeFiles/trochoids-test.dir/src/trochoids.cpp.o[0m
+[ 90%] [32m[1mLinking CXX executable /home/oswaldor/trochoids_ws/devel/.private/trochoids/lib/trochoids/trochoids-test[0m
+[100%] Built target trochoids-test
+[100%] Built target tests

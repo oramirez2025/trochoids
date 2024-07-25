@@ -1,0 +1,8 @@
+prefix=/home/oswaldor/trochoids_ws/devel/.private/trochoids
+
+Name: trochoids
+Description: Description of trochoids
+Version: 0.1.0
+Cflags: -I/home/oswaldor/trochoids_ws/src/trochoids/include
+Libs: -L${prefix}/lib -ltrochoids
+Requires: 
