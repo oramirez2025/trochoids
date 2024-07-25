@@ -36,6 +36,7 @@
 /* Authors: Sagar Sachdev, Brady Moon, Jay Patrikar */
 
 #include "trochoids/trochoids.h"
+#include "trochoids/ChebTools.h"
 
 typedef std::vector<std::tuple<double, double, double>> Path;
 
@@ -408,7 +409,7 @@ std::vector<std::pair<double, double>> trochoids::Trochoid::trochoid_classificat
     return del;
 }
 
-// For LSL and RSR, use analytical solution
+// For LSL and RSR, use –ical solution
 Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
 {
     this->waypoint_distance = waypoint_distance;
@@ -503,6 +504,7 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
         }
         else
         {
+            // Final path is edited in here 
             double step_size = (2 * t_2pi)/360.0;
             exhaustive_numerical_solve(del1, del2, phi1, phi2,
                                         vw, step_size, xt10, xt20,
@@ -656,26 +658,44 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
     {
         double t = 0;
         double t_2pi = (2 * M_PI / w);
-        std::vector<double> t1;
-        while (t < 2 * t_2pi)
-        {
-            double t1_ = newtonRaphson(t, k);
-            t += step_size;
-            if (t1_ >= 0.0 && t1_ < 2 * t_2pi && abs(func(t1_, k)) < EPSILON)  // Changed from 0.1
-            {
-                t1.push_back(t1_);
-            }
-        }
+        // Newton Raphson Method
+        // std::vector<double> t1;
+        // while (t < 2 * t_2pi)
+        // {
+        //     double t1_ = newtonRaphson(t, k);
+        //     t += step_size;
+        //     if (t1_ >= 0.0 && t1_ < 2 * t_2pi && abs(func(t1_, k)) < EPSILON)  // Changed from 0.1
+        //     {
+        //         t1.push_back(t1_);
+        //     }
+        // }
+
+        // std::sort(t1.begin(), t1.end());
+        // auto last = std::unique(t1.begin(), t1.end(), [](double l, double r)
+        //                         { return std::abs(l - r) < EPSILON; });
+        // t1.erase(last, t1.end());
+        // Cheb Method
+        auto ce = ChebTools::ChebyshevExpansion::factory(15, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
+        bool only_in_domain = true;
+        std::vector<double> t1 = ce.real_roots2(only_in_domain);
         std::sort(t1.begin(), t1.end());
         auto last = std::unique(t1.begin(), t1.end(), [](double l, double r)
                                 { return std::abs(l - r) < EPSILON; });
-        t1.erase(last, t1.end());
-        for (int i = 0; i < t1.size(); i++)
+        t1.erase(last,t1.end());
+        // std::cout << "the size of the newton raphson roots are " << t1.size() << " and the size of the cheb roots are " << c1.size() << "\n";
+        // for (size_t i = 0; i < c1.size(); i ++){
+        //     double chebRoot = c1[i];
+        //     double NewtonRoot = t1[i];
+        //     std::cout << "the chebRoot is " << chebRoot << " and the newtonRoot is " << NewtonRoot << "\n";
+        // }
+
+        for (size_t i = 0; i < t1.size(); i++)
         {
             double var = func(t1[i], k);
             double t2 = (del1 / del2) * t1[i] + ((trochoids::WrapTo2Pi(phi1 - phi2) + 2 * k * M_PI) / (del2 * w));
-            if (t2 <= -t_2pi || t2 > t_2pi)
+            if (t2 <= -t_2pi || t2 > t_2pi) {
                 continue;
+            }
 
             double x1t2 = (v / (del1 * w)) * sin(del1 * w * t1[i] + phi1) + vw * t1[i] + xt10;
             double y1t2 = -(v / (del1 * w)) * cos(del1 * w * t1[i] + phi1) + yt10;
@@ -870,6 +890,8 @@ double trochoids::Trochoid::func(double t, double k)
 {
     double F = v*((xt20-xt10)+vw*(t*((del1/del2)-1)+(((trochoids::WrapTo2Pi(phi1-phi2)+2*k*M_PI)/(del2*w)))));
     double val = E*cos(del1*w*t+phi1) + F*sin(del1*w*t+phi1)-G;
+
+    
 
     return val;
 }
