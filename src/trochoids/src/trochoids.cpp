@@ -654,12 +654,35 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
                                                     double &best_time, Path &final_path)
 {
     Path temp_path;
-    double t_2pi = (2 * M_PI / w);
-    for (double k = -3; k < 3; k++)
+    double start = -3;
+    double end = 3;
+    if (del1 == del2) {
+        if (del2 == -1) {
+            start = -2;
+            end = 3;
+        }
+        else {
+            start = -3;
+            end = 2;
+        }
+    }
+    else {
+        // LSR
+        if (del1 == -1) {
+            start = -1;
+            end = 4;
+        }
+        else {
+            start = -3;
+            end = 0;
+        }
+    }
+    for (double k = start; k < end; k++)
     {
+        double t = 0;
+        double t_2pi = (2 * M_PI / w);
         // Newton Raphson Method
         // std::vector<double> t1;
-        // double t = 0;
         // while (t < 2 * t_2pi)
         // {
         //     double t1_ = newtonRaphson(t, k);
@@ -675,7 +698,7 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
         //                         { return std::abs(l - r) < EPSILON; });
         // t1.erase(last, t1.end());
         // Cheb Method
-        auto ce = ChebTools::ChebyshevExpansion::factory(15, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi); 
+        auto ce = ChebTools::ChebyshevExpansion::factory(15, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
         bool only_in_domain = true;
         std::vector<double> t1 = ce.real_roots2(only_in_domain);
         std::sort(t1.begin(), t1.end());
@@ -686,11 +709,12 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
         // for (size_t i = 0; i < c1.size(); i ++){
         //     double chebRoot = c1[i];
         //     double NewtonRoot = t1[i];
-        //     std::cout << "the difference is " << abs(chebRoot - NewtonRoot) << "\n";
+        //     std::cout << "the chebRoot is " << chebRoot << " and the newtonRoot is " << NewtonRoot << "\n";
         // }
 
         for (size_t i = 0; i < t1.size(); i++)
         {
+            double var = func(t1[i], k);
             double t2 = (del1 / del2) * t1[i] + ((trochoids::WrapTo2Pi(phi1 - phi2) + 2 * k * M_PI) / (del2 * w));
             if (t2 <= -t_2pi || t2 > t_2pi) {
                 continue;
@@ -885,23 +909,16 @@ void trochoids::Trochoid::check_roots(double &del1, double &w,
         throw std::runtime_error("Caught case where less than -1 works");
 }
 
-double trochoids::Trochoid::func(double t, int k)
+double trochoids::Trochoid::func(double t, double k)
 {
     double F = v*((xt20-xt10)+vw*(t*((del1/del2)-1)+(((trochoids::WrapTo2Pi(phi1-phi2)+2*k*M_PI)/(del2*w)))));
     double inside = del1*w*t+phi1;
     double val = E*cos(inside) + F*sin(inside)-G;
 
+    
+
     return val;
 }
-
-
-// double trochoids::Trochoid::func(double t, double k)
-// {
-//     double F = v*((xt20-xt10)+vw*(t*((del1/del2)-1)+(((trochoids::WrapTo2Pi(phi1-phi2)+2*k*M_PI)/(del2*w)))));
-//     double val = E*cos(del1*w*t+phi1) + F*sin(del1*w*t+phi1)-G;
-
-//     return val;
-// }
 
 double trochoids::Trochoid::derivfunc(double t, double k)
 {
