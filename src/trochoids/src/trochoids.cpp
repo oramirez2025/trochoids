@@ -456,7 +456,19 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
 
         if (abs(del1 - del2) < EPSILON)  // LSL or RSR condition
         {
-            for (double k = -3; k < 3; k++)
+            double start = -3;
+            double end = 3;
+            // LSL
+            if (del2 == -1) {
+                start = -2;
+                end = 3;
+            }
+            // RSR
+            else {
+                start = -3;
+                end = 2;
+            }
+            for (double k = start; k < end; k++)
             {
                 double alpha = atan2((yt20 - yt10),
                                      (xt20 - xt10 + vw * (fmod(phi1 - phi2, M_2PI) + 2 * k * M_PI) /
@@ -504,13 +516,24 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
         }
         else
         {
-            // Final path is edited in here 
+            
             double step_size = (2 * t_2pi)/360.0;
             exhaustive_numerical_solve(del1, del2, phi1, phi2,
                                         vw, step_size, xt10, xt20,
                                         yt10, yt20, best_time, final_path);
         }
+        double R_0 = v / w;
+        double dist = sqrt(pow((xf - x0),2) + pow((yf - y0),2));
+        // BBB solutions exist (not completely convinced that it works for case with wind)
+        if (dist <= 4 * R_0) {
+            double step_size = (2 * t_2pi)/360.0;
+            BBB_solve(del1, del2, phi1, phi2,
+                    vw, step_size, xt10, xt20,
+                    yt10, yt20, best_time, final_path);
+        }
     }
+    
+
     return final_path;
 }
 
@@ -567,8 +590,6 @@ Path trochoids::Trochoid::getTrochoidNumerical(bool exhaustive_solve_only, doubl
 
     return final_path;
 }
-
-
 
 Path trochoids::Trochoid::get_path(double t1, double t2)
 {
@@ -633,6 +654,62 @@ Path trochoids::Trochoid::get_path(double t1, double t2)
     return path;
 }
 
+Path trochoids::Trochoid::get_path_BBB(double t_a, double t_b, double T)
+{
+    Path path;
+    // double step_size = std::max(0.1, t1/360.0);
+    double turn_step_size = M_PI/(180*w);
+    assert(waypoint_distance >= 0.0);
+    // std::cout << "waypoint_distance: " << waypoint_distance << std::endl;
+    if (waypoint_distance > 0.01)
+    {
+        turn_step_size = waypoint_distance/v;
+        // std::cout << "turn_step_size: " << turn_step_size << std::endl;
+    }
+    // First curve
+    for (double t = 0.0; t < t_a ; t += turn_step_size)
+    {
+        double x = (v/(del1*w))*sin(del1*w*t+phi1) + vw*t + xt10;
+        double y = -(v/(del1*w))*cos(del1*w*t+phi1) + yt10;
+        double psi = trochoids::WrapTo2Pi(del1*w*t+phi1);
+        double xt = x*cos(psi_w) - y*sin(psi_w);
+        double yt = x*sin(psi_w) + y*cos(psi_w);
+        psi = trochoids::WrapTo2Pi(psi + psi_w);
+        path.push_back(std::make_tuple(xt, yt, psi));
+    }
+
+    // Second curve
+    for (double t = t_a; t < T; t += turn_step_size)
+    {
+        double x = (v/(del2*w))*sin(del2*w*t+phi2) + vw*t + xt20;
+        double y = -(v/(del2*w))*cos(del2*w*t+phi2) + yt20;
+        double psi = trochoids::WrapTo2Pi(del2*w*t+phi2);
+        double xt = x*cos(psi_w) - y*sin(psi_w);
+        double yt = x*sin(psi_w) + y*cos(psi_w);
+        psi = trochoids::WrapTo2Pi(psi + psi_w);
+
+        path.push_back(std::make_tuple(xt, yt, psi));
+    }
+
+    // Third curve
+    double phi3 = problem.Xf[2] - del1 * w * T;
+    for (double t = T; t < (2*M_PI/w) ; t += turn_step_size)
+    {
+        double x = (v/(del1*w))*sin(del1*w*t+phi3) + vw*t + xt30;
+        double y = -(v/(del1*w))*cos(del1*w*t+phi3) + yt30;
+        double psi = trochoids::WrapTo2Pi(del1*w*t+phi3);
+        double xt = x*cos(psi_w) - y*sin(psi_w);
+        double yt = x*sin(psi_w) + y*cos(psi_w);
+        psi = trochoids::WrapTo2Pi(psi + psi_w);
+
+        path.push_back(std::make_tuple(xt, yt, psi));
+    }
+
+
+    path.push_back(std::make_tuple(problem.Xf[0], problem.Xf[1], problem.Xf[2]));
+    return path;
+}
+
 double trochoids::Trochoid::get_length(Path path)
 {
     double length(0.0);
@@ -657,10 +734,12 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
     double start = -3;
     double end = 3;
     if (del1 == del2) {
+        // LSL
         if (del2 == -1) {
             start = -2;
             end = 3;
         }
+        // RSR
         else {
             start = -3;
             end = 2;
@@ -672,16 +751,17 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
             start = -1;
             end = 4;
         }
+        // RSL
         else {
             start = -3;
             end = 0;
         }
     }
+    double t_2pi = (2 * M_PI / w);
     for (double k = start; k < end; k++)
     {
-        double t = 0;
-        double t_2pi = (2 * M_PI / w);
         // Newton Raphson Method
+        // double t = 0;
         // std::vector<double> t1;
         // while (t < 2 * t_2pi)
         // {
@@ -701,22 +781,31 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
         auto ce = ChebTools::ChebyshevExpansion::factory(15, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
         bool only_in_domain = true;
         std::vector<double> t1 = ce.real_roots2(only_in_domain);
+
+        // Sharpen the roots with Newton Raphson 
+        // std::vector<double> polished_roots;
+        // for (size_t i = 0; i < t1.size(); i++) {
+        //     double x = newtonRaphson(t1[i],k,10);
+        //     polished_roots.push_back(t_2pi * (x + 1));
+
+        // }
+
+        
         std::sort(t1.begin(), t1.end());
         auto last = std::unique(t1.begin(), t1.end(), [](double l, double r)
                                 { return std::abs(l - r) < EPSILON; });
         t1.erase(last,t1.end());
-        // std::cout << "the size of the newton raphson roots are " << t1.size() << " and the size of the cheb roots are " << c1.size() << "\n";
-        // for (size_t i = 0; i < c1.size(); i ++){
-        //     double chebRoot = c1[i];
-        //     double NewtonRoot = t1[i];
-        //     std::cout << "the chebRoot is " << chebRoot << " and the newtonRoot is " << NewtonRoot << "\n";
+
+        // std::cout << "the size of the cheb roots are " << t1.size() << " with k value = " << k <<"\n";
+        // for (size_t i = 0; i < t1.size(); i ++){
+        //     double chebRoot = t1[i];
+        //     std::cout << "the chebRoot is " << chebRoot << " with value " << func(chebRoot,k) <<  "\n" ;
         // }
 
         for (size_t i = 0; i < t1.size(); i++)
         {
-            double var = func(t1[i], k);
             double t2 = (del1 / del2) * t1[i] + ((trochoids::WrapTo2Pi(phi1 - phi2) + 2 * k * M_PI) / (del2 * w));
-            if (t2 <= -t_2pi || t2 > t_2pi) {
+            if (t2 <= -t_2pi || t2 > t_2pi || t1[i] + (t_2pi - t2) > t_2pi) {
                 continue;
             }
 
@@ -747,6 +836,41 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
                 final_path = temp_path;
             }
         }
+    }
+}
+
+void trochoids::Trochoid::BBB_solve(double &del1, double &del2,
+                                    double &phi1, double &phi2,
+                                    double &vw, double &step_size,
+                                    double &xt10, double &xt20,
+                                    double &yt10, double &yt20,
+                                    double &best_time, Path &final_path)
+{
+    double t_2pi = (2 * M_PI / w);
+    double t_a = 0;
+    // Depending on the first turn, the bounds on T is different
+    // If LRL then the lower bound is -7 * t_2pi otherwise the lower bound is -5 * t_2pi
+    double lower = del2 == 1 ? -7 * t_2pi : -5 * t_2pi;
+    double T = lower;
+    std::pair<double,double> best  = std::make_pair(-1,-1);
+    double yt30 = problem.Xf[1] + (v/(del1 * w)) * cos(problem.Xf[2]);
+    while (t_a < 2 * t_2pi && T < 2 * t_2pi) {
+        std::pair<double,double> t = newtonRaphson2D(t_a,T,100); // Note: t.first = t_a' and t.second = T', where t_a' and T' are possible roots
+        t_a = t_a + step_size;
+        T = T + step_size;
+        double xt30 = problem.Xf[0] - (v/(del1 * w)) * sin(problem.Xf[2]) - vw * t.second;
+        std::pair<double,double> val = func2D(t);
+        if (0 <= t.first && t.first < 2 * t_2pi &&
+            lower < t.second && t.second <= 2 * t_2pi &&
+            val.first <= EPSILON && val.second <= EPSILON &&
+            t.second < best.second) {
+                best = t;
+            }
+    }
+    // we'll need to give the new best path
+    if (best.second < best_time) {
+        double t_b = best.first = best.second/2 + (problem.Xf[2] - problem.X0[2])/(2 * del2 * w);
+        final_path = get_path_BBB(best.first, t_b, best.second);
     }
 }
 
@@ -914,10 +1038,16 @@ double trochoids::Trochoid::func(double t, double k)
     double F = v*((xt20-xt10)+vw*(t*((del1/del2)-1)+(((trochoids::WrapTo2Pi(phi1-phi2)+2*k*M_PI)/(del2*w)))));
     double inside = del1*w*t+phi1;
     double val = E*cos(inside) + F*sin(inside)-G;
-
-    
-
     return val;
+}
+
+std::pair<double,double> trochoids::Trochoid::func2D(std::pair<double,double> t)
+{
+    double inside1 = del1 * w * t.first + phi1;
+    double inside2 = del2 * w * t.second/2 + problem.Xf[2]/2 + del1 * w * t.first + phi1/2;
+    double f1 = ((2 * v)/(del1 * w)) * sin(inside1) + xt10 - xt30 + ((2 * v)/(del2 * w)) * sin(inside2); 
+    double f2 = (-(2 * v)/(del1 * w)) * cos(inside1) + yt10 - yt30 - ((2 * v)/(del2 * w)) * cos(inside2); 
+    return std::make_pair(f1,f2);
 }
 
 double trochoids::Trochoid::derivfunc(double t, double k)
@@ -934,14 +1064,54 @@ double trochoids::Trochoid::newtonRaphson(double x, double k, int idx_max)
     int iter = 0;
     while (abs(h) >= EPSILON)
     {
-        h = func(x, k)/derivfunc(x, k);
+        x = x - h;
 
         iter++;
         if (iter > idx_max)
         {
             break;
         }
-        x = x - h;
+        h = func(x, k)/derivfunc(x, k);
     }
     return x;
+}
+
+std::pair<double,double> trochoids::Trochoid::findh(double t_a, double T) {
+    double inside1 = del1 * w * t_a + phi1;
+    double inside2 = del2 * w * T/2 + problem.Xf[2]/2 + del1 * w * t_a + phi1/2;
+    double a = 2 * v * cos(inside1) + 2 * v * (del1/del2) * cos(inside2);
+    double b = vw + v * cos(inside2);
+    double c = 2 * v * sin(inside1) + 2 * v * (del1/del2) * sin(inside2);
+    double d = v * sin(inside2);
+    // matrix is not invertible 
+    double det = a * d - b * c;
+    if (det <= EPSILON) {
+        return std::make_pair(-1,-1);
+    }
+    std::pair<double,double> f = func2D(std::make_pair(t_a,T));
+    double h1 = (d * f.first - b * f.second)/det;
+    double h2 = (a * f.second - c * f.first)/det;
+    return std::make_pair(h1,h2);
+}
+
+std::pair<double,double> trochoids::Trochoid::newtonRaphson2D(double t1, double t2, int idx_max) {
+    std::pair<double,double> h = findh(t1,t2);
+    // pair doesn't work 
+    if (h.first == -1) {
+        return h;
+    }
+    int iter = 0;
+    while (h.first >= EPSILON && h.second >= EPSILON) {
+        t1 = t1 - h.first;
+        t2 = t2 - h.second;
+        if (iter > idx_max)
+        {
+            break;
+        }
+        h = findh(t1,t2);
+        if (h.first == -1) {
+            return h;
+        }
+    }
+    return std::make_pair(t1,t2);
 }
