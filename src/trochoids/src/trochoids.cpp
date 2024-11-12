@@ -53,117 +53,120 @@ int find_quadrant(double angle)
         return 4;  // fourth quadrant
 }
 
-std::vector<std::pair<double, double>> del_picker(int init_quadrant, int final_quadrant)
+std::vector<std::tuple<double, double, double>> del_picker(int init_quadrant, int final_quadrant)
 {
-        std::vector<std::pair<double, double>> del;
+        std::vector<std::tuple<double, double, double>> del;
 
         if (init_quadrant == 1 && final_quadrant == 1)
         {
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
             return del;
         }
         else if (init_quadrant == 2 && final_quadrant == 3)
         {
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
             return del;
         }
         else if (init_quadrant == 3 && final_quadrant == 2)
         {
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
             return del;
         }
         else if (init_quadrant == 4 && final_quadrant == 4)
         {
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
             return del;
         }
         // Checking for cells with 2 cases
         else if (init_quadrant == 1 && final_quadrant == 2)
         {
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
             return del;
         }
         else if (init_quadrant == 1 && final_quadrant == 3)
         {
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
             return del;
         }
         else if (init_quadrant == 2 && final_quadrant == 1)
         {
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
             return del;
         }
         else if (init_quadrant == 2 && final_quadrant == 4)
         {
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
             return del;
         }
         else if (init_quadrant == 3 && final_quadrant == 1)
         {
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
             return del;
         }
         else if (init_quadrant == 3 && final_quadrant == 4)
         {
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
             return del;
         }
         else if (init_quadrant == 4 && final_quadrant == 2)
         {
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
             return del;
         }
         else if (init_quadrant == 4 && final_quadrant == 3)
         {
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
             return del;
         }
         else if (init_quadrant == 1 && final_quadrant == 4)
         {
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
-            del.push_back(std::pair<double, double>(1, -1));   // LSR
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
             return del;
         }
         else if (init_quadrant == 2 && final_quadrant == 2)
         {
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
             return del;
         }
         else if (init_quadrant == 3 && final_quadrant == 3)
         {
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
             return del;
         }
         else if (init_quadrant == 4 && final_quadrant == 1)
         {
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
             return del;
         }
+        // catch all: throw in the BBB case 
         else
         {
-            del.push_back(std::pair<double, double>(1, 1));  // LSL
-            del.push_back(std::pair<double, double>(-1, 1));  // RSL
-            del.push_back(std::pair<double, double>(1, -1));  // LSR
-            del.push_back(std::pair<double, double>(-1, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
+            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
+            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
+            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
+            del.push_back(std::tuple<double, double, double>(-1, 1, -1)); // RLR
+            del.push_back(std::tuple<double, double, double>(1, -1, 1)); // LRL
             return del;
         }
 }
@@ -305,7 +308,7 @@ std::vector<double> trochoids::Trochoid::decision_pts(double x0,
 x0, y0, xf, yf are the initial and final positions in the trochoidal frame
 psi1, psi2 are the initial and final headings in intertial frame
 */
-std::vector<std::pair<double, double>> trochoids::Trochoid::trochoid_classification(double x0,
+std::vector<std::tuple<double, double, double>> trochoids::Trochoid::trochoid_classification(double x0,
                                                                                     double y0,
                                                                                     double xf,
                                                                                     double yf)
@@ -336,11 +339,14 @@ std::vector<std::pair<double, double>> trochoids::Trochoid::trochoid_classificat
             bool within_four_r = check_within_four_r(decision_points[i], decision_points[i-1], x0, y0, xf, yf);
             if (within_four_r)
             {
-                std::vector<std::pair<double, double>> del;
-                del.push_back(std::pair<double, double>(1, 1));
-                del.push_back(std::pair<double, double>(-1, 1));
-                del.push_back(std::pair<double, double>(1, -1));
-                del.push_back(std::pair<double, double>(-1, -1));
+                // I forgot... is there where we need to include all 6?
+                std::vector<std::tuple<double, double, double>> del;
+                del.push_back(std::tuple<double, double, double>(1, 0, 1)); 
+                del.push_back(std::tuple<double, double, double>(-1, 0, 1));
+                del.push_back(std::tuple<double, double, double>(1, 0, -1));
+                del.push_back(std::tuple<double, double, double>(-1, 0, -1));
+                del.push_back(std::tuple<double, double, double>(-1, 1, -1));
+                del.push_back(std::tuple<double, double, double>(1, -1, 1));
                 return del;
             }
 
@@ -377,11 +383,13 @@ std::vector<std::pair<double, double>> trochoids::Trochoid::trochoid_classificat
             bool within_four_r = check_within_four_r(decision_points[decision_points.size()-1], x0, y0, xf, yf);
             if (within_four_r)
             {
-                std::vector<std::pair<double, double>> del;
-                del.push_back(std::pair<double, double>(1, 1));
-                del.push_back(std::pair<double, double>(-1, 1));
-                del.push_back(std::pair<double, double>(1, -1));
-                del.push_back(std::pair<double, double>(-1, -1));
+                std::vector<std::tuple<double, double, double>> del;
+                del.push_back(std::tuple<double, double, double>(1, 0, 1)); 
+                del.push_back(std::tuple<double, double, double>(-1, 0, 1));
+                del.push_back(std::tuple<double, double, double>(1, 0, -1));
+                del.push_back(std::tuple<double, double, double>(-1, 0, -1));
+                del.push_back(std::tuple<double, double, double>(-1, 1, -1));
+                del.push_back(std::tuple<double, double, double>(1, -1, 1));
                 return del;
             }
             double d_0_angle = atan2(yf-y0, xf-decision_points[decision_points.size()-1]-x0);
@@ -398,14 +406,17 @@ std::vector<std::pair<double, double>> trochoids::Trochoid::trochoid_classificat
         int a1 = find_quadrant(psi1_trochoidal - d_between_angle);
         int a2 = find_quadrant(psi2_trochoidal - d_between_angle);
 
-        std::vector<std::pair<double, double>> del = del_picker(a1, a2);
+        std::vector<std::tuple<double, double, double>> del = del_picker(a1, a2);
         return del;
     }
-    std::vector<std::pair<double, double>> del;
-    del.push_back(std::pair<double, double>(1, 1));  // ll
-    del.push_back(std::pair<double, double>(1, -1));  // lr
-    del.push_back(std::pair<double, double>(-1, 1));  // rl
-    del.push_back(std::pair<double, double>(-1, -1));  // rr
+    // just try all the cases? make the middle component be the single 
+    std::vector<std::tuple<double, double, double>> del;
+    del.push_back(std::tuple<double, double, double>(1, 0, 1)); 
+    del.push_back(std::tuple<double, double, double>(-1, 0, 1));
+    del.push_back(std::tuple<double, double, double>(1, 0, -1));
+    del.push_back(std::tuple<double, double, double>(-1, 0, -1));
+    del.push_back(std::tuple<double, double, double>(-1, 1, -1));
+    del.push_back(std::tuple<double, double, double>(1, -1, 1));
     return del;
 }
 
@@ -437,13 +448,27 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
 
         return final_path;
     }
-    std::vector<std::pair<double, double>> del = trochoid_classification(x0, y0, xf, yf);
+    // this is a vector of doubles; we should change it to triples to include BBB case 
+    std::vector<std::tuple<double, double, double>> del = trochoid_classification(x0, y0, xf, yf);
 
     for (int g = 0; g < del.size(); g++)
     {
-        del1 = del[g].first;
-        del2 = del[g].second;
+        del1 = std::get<0>(del[g]);
+        del2 = std::get<1>(del[g]);
+        del3 = std::get<2>(del[g]);
         double t_2pi = 2 * M_PI / w;
+        // try BBB
+        if (del2 != 0) {
+            phi1 = trochoids::WrapTo2Pi(problem.X0[2]);
+            double step_size = (2 * t_2pi)/360.0;
+            xt10 = problem.X0[0] - (v / (del1 * w)) * sin(phi1);
+            yt10 = problem.X0[1] + (v / (del1 * w)) * cos(phi1);
+            BBB_solve(del1, del2, phi1, phi2,
+                    vw, step_size, xt10, xt20,
+                    yt10, yt20, best_time, final_path);
+        } 
+        // Otherwise, try BSB:
+        del2 = del3;
         phi1 = fmod(problem.X0[2] - psi_w, M_2PI);
         phi2 = fmod(problem.Xf[2] - psi_w - del2 * 2 * M_PI, M_2PI);
         xt10 = x0 - (v / (del1 * w)) * sin(phi1);
@@ -457,14 +482,16 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
 
         if (abs(del1 - del2) < EPSILON)  // LSL or RSR condition
         {
+            // rough bounds on k: [-3,3)
             double start = -3;
             double end = 3;
-            // LSL
+            // more refined bounds 
+            // LSL: [-2,3)
             if (del2 == -1) {
                 start = -2;
                 end = 3;
             }
-            // RSR
+            // RSR: [-3,2)
             else {
                 start = -3;
                 end = 2;
@@ -517,36 +544,11 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
         }
         else
         {
-            
             double step_size = (2 * t_2pi)/360.0;
             exhaustive_numerical_solve(del1, del2, phi1, phi2,
                                         vw, step_size, xt10, xt20,
                                         yt10, yt20, best_time, final_path);
         }
-    }
-    double four_R = 4.0/(this->problem.max_kappa);
-    double dist = sqrt(pow((yf - y0),2) + pow((xf - x0),2));
-    if (dist <= four_R) {
-        // try LRL 
-        phi1 = trochoids::WrapTo2Pi(problem.X0[2]);
-        double t_2pi = 2 * M_PI / w;
-        double step_size = (2 * t_2pi)/360.0;
-        del1 = -1.0;
-        del2 = 1.0;
-        xt10 = problem.X0[0] - (v / (del1 * w)) * sin(phi1);
-        yt10 = problem.X0[1] + (v / (del1 * w)) * cos(phi1);
-        BBB_solve(del1, del2, phi1, phi2,
-                vw, step_size, xt10, xt20,
-                yt10, yt20, best_time, final_path);
-        // try RLR 
-        del1 = 1.0;
-        del2 = -1.0;
-        xt10 = problem.X0[0] - (v / (del1 * w)) * sin(phi1);
-        yt10 = problem.X0[1] + (v / (del1 * w)) * cos(phi1);
-        BBB_solve(del1, del2, phi1, phi2,
-                vw, step_size, xt10, xt20,
-                yt10, yt20, best_time, final_path);
-
     }
     return final_path;
 }

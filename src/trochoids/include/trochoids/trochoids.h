@@ -53,8 +53,8 @@ namespace trochoids
 
 class Trochoid
 {
-    double del1, del2, v, w, vw, phi1, phi2, psi_w;
-    double xt10, yt10, xt20, yt20, xt30, yt30,  E, G;
+    double del1, del2, del3, v, w, vw, phi1, phi2, psi_w;
+    double xt10, yt10, xt20, yt20, E, G;
     double waypoint_distance = 0;
 
 public:
@@ -125,7 +125,7 @@ private:
                         double &phi1, double &F,
                         double &root1, double &root2, int &index);
 
-    std::vector<std::pair<double, double>> trochoid_classification(double x0,
+    std::vector<std::tuple<double, double, double>> trochoid_classification(double x0,
                                                                     double y0,
                                                                     double xf,
                                                                     double yf);
