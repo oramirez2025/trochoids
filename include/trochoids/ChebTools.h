@@ -1,7 +1,8 @@
 #ifndef CHEBTOOLS_H
 #define CHEBTOOLS_H
 
-#include "../externals/eigen/Eigen/Dense"
+#include <eigen3/Eigen/Dense>
+#include <eigen3/unsupported/Eigen/FFT>
 #include <vector>
 #include <queue>
 #include <optional>

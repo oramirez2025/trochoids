@@ -10,6 +10,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS)
 
+# eigen
+find_package(Eigen3 REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+
 # set the default build type
 if (NOT CMAKE_BUILD_TYPE)
     # By default, use Release mode

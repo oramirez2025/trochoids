@@ -1,10 +1,6 @@
 #include "trochoids/ChebTools.h"
 #include "trochoids/roots.h"
 
-// #include "Eigen/Dense"
-// #include <eigen3/Eigen/Dense>
-#include "../externals/eigen/unsupported/Eigen/FFT"
-
 #include <algorithm>
 #include <functional>
 
