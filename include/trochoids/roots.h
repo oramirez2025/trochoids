@@ -235,7 +235,7 @@ inline auto explicit_Chebyshev_4x4(const Eigen::Matrix<double, 4,4>& A4) -> std:
         return solns;
     }
      
-} /* namespace ChebTools */
+} 
 
 /** 
  Get the eigenvalues of a 3x3 matrix in lower hessenberg form (as in the case of companion matrices)
@@ -256,6 +256,6 @@ inline auto explicit_Chebyshev_3x3(const Eigen::Matrix<double, 3,3>& A3){
 }
 
 }
-}
+} /* namespace ChebTools */
 
 #endif

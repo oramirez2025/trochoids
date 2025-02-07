@@ -20,6 +20,8 @@ Time-optimal path planning in high winds for a turning-rate constrained UAV is a
 * Python 3.6+ (For visualizations)
 * Google Benchmark (For benchmarks)
     * `sudo apt-get install libbenchmark-dev`
+* Eigen3
+    * `sudo apt-get install libbeigen3-dev`
 
 ### Building and Installation
 
