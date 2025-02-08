@@ -21,7 +21,7 @@ Time-optimal path planning in high winds for a turning-rate constrained UAV is a
 * Google Benchmark (For benchmarks)
     * `sudo apt-get install libbenchmark-dev`
 * Eigen3
-    * `sudo apt-get install libbeigen3-dev`
+    * `sudo apt-get install libeigen3-dev`
 
 ### Building and Installation
 
@@ -32,6 +32,17 @@ mkdir -p ~/trochoids_ws/src
 cd  ~/trochoids_ws/src
 git clone git@github.com:castacks/trochoids.git
 cd ../
+catkin build
+```
+
+#### Docker Option
+If you would like to run the code in a docker container, you can use the provided Dockerfile. Follow the steps above to setup the workspace, but before building, run the following steps:
+
+```bash
+cd src/trochoids/Docker
+docker build -t trochoids-docker .
+cd ../../
+docker run -it --rm --mount type=bind,source="$(pwd)",target=/ws trochoids-docker /bin/bash   
 catkin build
 ```
 
