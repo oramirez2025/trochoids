@@ -71,6 +71,7 @@ public:
     };
     Problem problem;
     bool use_trochoid_classification = true;
+    bool use_Chebyshev = true;
 
     Trochoid() {}
 

@@ -658,36 +658,37 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
     {
         double t = 0;
         double t_2pi = (2 * M_PI / w);
-        // Newton Raphson Method
-        // std::vector<double> t1;
-        // while (t < 2 * t_2pi)
-        // {
-        //     double t1_ = newtonRaphson(t, k);
-        //     t += step_size;
-        //     if (t1_ >= 0.0 && t1_ < 2 * t_2pi && abs(func(t1_, k)) < EPSILON)  // Changed from 0.1
-        //     {
-        //         t1.push_back(t1_);
-        //     }
-        // }
 
-        // std::sort(t1.begin(), t1.end());
-        // auto last = std::unique(t1.begin(), t1.end(), [](double l, double r)
-        //                         { return std::abs(l - r) < EPSILON; });
-        // t1.erase(last, t1.end());
-        // Cheb Method
-        auto ce = ChebTools::ChebyshevExpansion::factory(15, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
-        bool only_in_domain = true;
-        std::vector<double> t1 = ce.real_roots2(only_in_domain);
-        std::sort(t1.begin(), t1.end());
-        auto last = std::unique(t1.begin(), t1.end(), [](double l, double r)
-                                { return std::abs(l - r) < EPSILON; });
-        t1.erase(last,t1.end());
-        // std::cout << "the size of the newton raphson roots are " << t1.size() << " and the size of the cheb roots are " << c1.size() << "\n";
-        // for (size_t i = 0; i < c1.size(); i ++){
-        //     double chebRoot = c1[i];
-        //     double NewtonRoot = t1[i];
-        //     std::cout << "the chebRoot is " << chebRoot << " and the newtonRoot is " << NewtonRoot << "\n";
-        // }
+        std::vector<double> t1;
+        std::vector<double>::iterator last;
+        if (this->use_Chebyshev)
+        {
+            // Cheb Method
+            auto ce = ChebTools::ChebyshevExpansion::factory(15, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
+            bool only_in_domain = true;
+            t1 = ce.real_roots2(only_in_domain);
+            std::sort(t1.begin(), t1.end());
+            last = std::unique(t1.begin(), t1.end(), [](double l, double r)
+                                    { return std::abs(l - r) < EPSILON; });
+        }
+        else
+        {
+            // Newton Raphson Method
+            while (t < 2 * t_2pi)
+            {
+                double t1_ = newtonRaphson(t, k);
+                t += step_size;
+                if (t1_ >= 0.0 && t1_ < 2 * t_2pi && abs(func(t1_, k)) < EPSILON)  // Changed from 0.1
+                {
+                    t1.push_back(t1_);
+                }
+            }
+            std::sort(t1.begin(), t1.end());
+            last = std::unique(t1.begin(), t1.end(), [](double l, double r)
+                                    { return std::abs(l - r) < EPSILON; });
+        }
+
+        t1.erase(last, t1.end());
 
         for (size_t i = 0; i < t1.size(); i++)
         {
