@@ -1,6 +1,5 @@
 /*********************************************************************
     The Clear BSD License
-
     Copyright (c) 2023, AirLab
     All rights reserved.
 
@@ -54,7 +53,7 @@ namespace trochoids
 
 class Trochoid
 {
-    double del1, del2, v, w, vw, phi1, phi2, psi_w;
+    double del1, del2, del3, v, w, vw, phi1, phi2, psi_w;
     double xt10, yt10, xt20, yt20, E, G;
     double waypoint_distance = 0;
 
@@ -71,8 +70,6 @@ public:
     };
     Problem problem;
     bool use_trochoid_classification = true;
-    bool use_Chebyshev = true;
-    bool include_CCC = true;
 
     Trochoid() {}
 
@@ -85,6 +82,8 @@ public:
 
     Path get_path(double t1, double t2);
 
+    Path get_path_BBB(double t_a, double t_b, double T);
+
     static std::vector<double> decision_pts(double x0, double y0,
                                             double xf, double yf,
                                             double psi1_trochoidal,
@@ -93,9 +92,15 @@ public:
 private:
     double func(double t, double k);
 
+    std::pair<double,double> func2D(std::pair<double,double> t);
+
     double derivfunc(double t, double k);
 
     double newtonRaphson(double x, double k, int idx_max = 100);
+
+    std::pair<double, double> newtonRaphson2D(double t1, double t2, int idx_max);
+
+    std::pair<double,double> findh(double t_a, double T);
 
     void exhaustive_numerical_solve(double &del1, double &del2,
                                     double &phi1, double &phi2,
@@ -103,6 +108,13 @@ private:
                                     double &xt10, double &xt20,
                                     double &yt10, double &yt20,
                                     double &best_time, Path &final_path);
+
+    void BBB_solve(double &del1, double &del2, 
+                    double &phi1, double &phi2, 
+                    double &vw, double &step_size, 
+                    double &xt10, double &xt20, 
+                    double &yt10, double &yt20, 
+                    double &best_time, Path &final_path);
 
     void dubins_solve(double &phi1, double &phi2,
                         double &x0, double &xf,
@@ -113,7 +125,7 @@ private:
                         double &phi1, double &F,
                         double &root1, double &root2, int &index);
 
-    std::vector<std::pair<double, double>> trochoid_classification(double x0,
+    std::vector<std::tuple<double, double, double>> trochoid_classification(double x0,
                                                                     double y0,
                                                                     double xf,
                                                                     double yf);
