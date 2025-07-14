@@ -36,15 +36,15 @@ catkin build
 ```
 
 #### Docker Option
-If you would like to run the code in a docker container, you can use the provided Dockerfile. Follow the steps above to setup the workspace, but before building, run the following steps:
+If you would like to run the code in a docker container, you can use the provided Dockerfile. No need to setup the workspace as above. Just run the following in the repo:
 
 ```bash
-cd src/trochoids/Docker
-docker build -t trochoids-docker .
-cd ../../
-docker run -it --rm --mount type=bind,source="$(pwd)",target=/ws trochoids-docker /bin/bash   
+docker compose build
+docker compose run --rm trochoids_ws
 catkin build
 ```
+
+
 
 ### Building and Running Unit Tests
 

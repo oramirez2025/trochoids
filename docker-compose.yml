@@ -1,0 +1,13 @@
+services:
+  trochoids_ws:
+    build:
+      context: ./Docker
+      dockerfile: Dockerfile
+    container_name: trochoids_ws
+    volumes:
+      - .:/ws/src/trochoids
+    working_dir: /ws
+    stdin_open: true
+    command: /bin/bash 
+    tty: true
+
