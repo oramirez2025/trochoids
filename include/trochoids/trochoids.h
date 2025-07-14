@@ -48,6 +48,8 @@
 #include "trochoids/trochoid_utils.h"
 
 
+typedef std::vector<std::tuple<double, double, double>> Path;
+
 namespace trochoids
 {
 
@@ -69,7 +71,12 @@ public:
         double v;  // m/s
     };
     Problem problem;
+
+    // Optimization options
     bool use_trochoid_classification = true;
+    bool use_Chebyshev = true;
+    bool include_CCC = true;
+    bool use_dubins_if_low_wind = true;
 
     Trochoid() {}
 

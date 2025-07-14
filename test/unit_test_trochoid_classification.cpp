@@ -45,12 +45,13 @@
 void path_to_file(std::vector<trochoids::XYZPsiState> &trochoid_path, std::string path_name)
 {
     std::ofstream myfile;
-    myfile.open(path_name);
+    myfile.open(std::string(HOME_PATH) + path_name);
     for (int i = 0; i < trochoid_path.size(); i++)
     {
         myfile << trochoid_path[i].x << ", " << trochoid_path[i].y << ", " << trochoid_path[i].z << ", " << trochoid_path[i].psi << std::endl;
     }
     myfile.close();
+    std::cout << "File saved to: " << path_name << std::endl;   
 }
 
 

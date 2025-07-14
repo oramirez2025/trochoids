@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 PATH = 'csv_files/' # Use your path
 
 fileNames = os.listdir(PATH)
+print("List of files in the directory:")
+print(fileNames)
 fileNames = [file for file in fileNames if '.csv' in file]
 fileNames.sort()
 dataframes_list = []
@@ -29,5 +31,6 @@ for dataframe, file in zip(dataframes_list, files):
     plt.title(file)
     plt.grid()
     plt.savefig('figures/'+ file + '.png', transparent=True)
+    print("Saved figure: " + file + '.png')
     plt.show()
     

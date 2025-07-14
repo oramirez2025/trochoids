@@ -42,6 +42,7 @@
 
 #include "trochoids/trochoid_utils.h"
 #include "unit_test_trochoid_classification.cpp"
+#include "unit_test_trochoid_chebyshev.cpp"
 #include "trochoids/trochoids.h"
 
 

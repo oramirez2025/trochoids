@@ -38,8 +38,6 @@
 #include "trochoids/trochoids.h"
 #include "trochoids/ChebTools.h"
 
-typedef std::vector<std::tuple<double, double, double>> Path;
-
 int find_quadrant(double angle)
 {
     angle = trochoids::WrapTo2Pi(angle);
@@ -440,7 +438,7 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
     phi1 = trochoids::WrapTo2Pi(problem.X0[2]);
     phi2 = trochoids::WrapTo2Pi(problem.Xf[2]);
 
-    if (abs(vw) < EPSILON)
+    if (this->use_dubins_if_low_wind && abs(vw) < EPSILON)
     {
         dubins_solve(phi1, phi2,
                     x0, xf,
