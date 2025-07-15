@@ -51,7 +51,21 @@ int find_quadrant(double angle)
         return 4;  // fourth quadrant
 }
 
-std::vector<std::tuple<double, double, double>> del_picker(int init_quadrant, int final_quadrant)
+
+std::vector<std::tuple<double, double, double>> get_trochoid_cases(bool include_BBB) {
+    std::vector<std::tuple<double, double, double>> del;
+    del.push_back(std::tuple<double, double, double>(1, 0, 1));   // LSL
+    del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
+    del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
+    del.push_back(std::tuple<double, double, double>(-1, 0, -1)); // RSR
+    if (include_BBB){
+        del.push_back(std::tuple<double, double, double>(-1, 1, -1)); // RLR
+        del.push_back(std::tuple<double, double, double>(1, -1, 1));  // LRL
+    }
+    return del;
+}
+
+std::vector<std::tuple<double, double, double>> del_picker(int init_quadrant, int final_quadrant, bool include_BBB)
 {
         std::vector<std::tuple<double, double, double>> del;
 
@@ -159,13 +173,7 @@ std::vector<std::tuple<double, double, double>> del_picker(int init_quadrant, in
         // catch all: throw in the BBB case 
         else
         {
-            del.push_back(std::tuple<double, double, double>(1, 0, 1));  // LSL
-            del.push_back(std::tuple<double, double, double>(-1, 0, 1));  // RSL
-            del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
-            del.push_back(std::tuple<double, double, double>(-1, 0, -1));  // RSR
-            del.push_back(std::tuple<double, double, double>(-1, 1, -1)); // RLR
-            del.push_back(std::tuple<double, double, double>(1, -1, 1)); // LRL
-            return del;
+            return get_trochoid_cases(include_BBB);
         }
 }
 
@@ -337,15 +345,9 @@ std::vector<std::tuple<double, double, double>> trochoids::Trochoid::trochoid_cl
             bool within_four_r = check_within_four_r(decision_points[i], decision_points[i-1], x0, y0, xf, yf);
             if (within_four_r)
             {
-                // I forgot... is there where we need to include all 6?
-                std::vector<std::tuple<double, double, double>> del;
-                del.push_back(std::tuple<double, double, double>(1, 0, 1)); 
-                del.push_back(std::tuple<double, double, double>(-1, 0, 1));
-                del.push_back(std::tuple<double, double, double>(1, 0, -1));
-                del.push_back(std::tuple<double, double, double>(-1, 0, -1));
-                del.push_back(std::tuple<double, double, double>(-1, 1, -1));
-                del.push_back(std::tuple<double, double, double>(1, -1, 1));
-                return del;
+                // I forgot... is there where we need to include all 6? 
+                // TODO: Check above
+                return get_trochoid_cases(this->include_BBB);
             }
 
             double best_length = std::numeric_limits<double>::infinity();
@@ -381,14 +383,7 @@ std::vector<std::tuple<double, double, double>> trochoids::Trochoid::trochoid_cl
             bool within_four_r = check_within_four_r(decision_points[decision_points.size()-1], x0, y0, xf, yf);
             if (within_four_r)
             {
-                std::vector<std::tuple<double, double, double>> del;
-                del.push_back(std::tuple<double, double, double>(1, 0, 1)); 
-                del.push_back(std::tuple<double, double, double>(-1, 0, 1));
-                del.push_back(std::tuple<double, double, double>(1, 0, -1));
-                del.push_back(std::tuple<double, double, double>(-1, 0, -1));
-                del.push_back(std::tuple<double, double, double>(-1, 1, -1));
-                del.push_back(std::tuple<double, double, double>(1, -1, 1));
-                return del;
+                return get_trochoid_cases(this->include_BBB);
             }
             double d_0_angle = atan2(yf-y0, xf-decision_points[decision_points.size()-1]-x0);
             if (d_0_angle > 0)
@@ -404,18 +399,12 @@ std::vector<std::tuple<double, double, double>> trochoids::Trochoid::trochoid_cl
         int a1 = find_quadrant(psi1_trochoidal - d_between_angle);
         int a2 = find_quadrant(psi2_trochoidal - d_between_angle);
 
-        std::vector<std::tuple<double, double, double>> del = del_picker(a1, a2);
+        std::vector<std::tuple<double, double, double>> del = del_picker(a1, a2, this->include_BBB);
         return del;
     }
-    // just try all the cases? make the middle component be the single 
-    std::vector<std::tuple<double, double, double>> del;
-    del.push_back(std::tuple<double, double, double>(1, 0, 1)); 
-    del.push_back(std::tuple<double, double, double>(-1, 0, 1));
-    del.push_back(std::tuple<double, double, double>(1, 0, -1));
-    del.push_back(std::tuple<double, double, double>(-1, 0, -1));
-    del.push_back(std::tuple<double, double, double>(-1, 1, -1));
-    del.push_back(std::tuple<double, double, double>(1, -1, 1));
-    return del;
+    // just try all the cases? make the middle component be the single
+    // TODO: Check above
+    return get_trochoid_cases(this->include_BBB);
 }
 
 // For LSL and RSR, use –ical solution

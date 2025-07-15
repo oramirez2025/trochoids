@@ -81,7 +81,7 @@ TEST(TestChebyshev, trochoid_compare_methods_random_wind_varkappa)
 
     trochoid.use_trochoid_classification = true;
     trochoid.use_Chebyshev = true;
-    trochoid.include_CCC = true;
+    trochoid.include_BBB = true;
     trochoid.use_dubins_if_low_wind = true;
 
     trochoid.problem.v = desired_speed;

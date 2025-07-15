@@ -75,7 +75,7 @@ public:
     // Optimization options
     bool use_trochoid_classification = true;
     bool use_Chebyshev = true;
-    bool include_CCC = true;
+    bool include_BBB = false; // TODO: should this be default true?
     bool use_dubins_if_low_wind = true;
 
     Trochoid() {}
