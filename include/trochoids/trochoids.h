@@ -80,8 +80,7 @@ public:
 
     Trochoid() {}
 
-    Path getTrochoidNumerical(bool exhaustive_solve_only = false,
-                                double waypoint_distance = 0);
+    Path getTrochoidNumerical(double waypoint_distance = 0);
 
     Path getTrochoid(double waypoint_distance = 0);
 

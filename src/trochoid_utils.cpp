@@ -70,7 +70,8 @@ bool trochoids::get_trochoid_path_numerical(const XYZPsiState &s1,
     trochoid.problem.max_kappa = max_kappa;
     trochoid.problem.X0 = {s1.x, s1.y, s1.psi};
     trochoid.problem.Xf = {s2.x, s2.y, s2.psi};
-    Path path = trochoid.getTrochoidNumerical(exhaustive_solve_only, waypoint_distance);
+    trochoid.use_dubins_if_low_wind = !exhaustive_solve_only;
+    Path path = trochoid.getTrochoidNumerical(waypoint_distance);
     if (path.size() == 0)
     {
         return false;

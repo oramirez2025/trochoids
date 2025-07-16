@@ -541,7 +541,7 @@ Path trochoids::Trochoid::getTrochoid(double waypoint_distance)
 }
 
 
-Path trochoids::Trochoid::getTrochoidNumerical(bool exhaustive_solve_only, double waypoint_distance)
+Path trochoids::Trochoid::getTrochoidNumerical(double waypoint_distance)
 {
     this->waypoint_distance = waypoint_distance;
     // Establishing some variables
@@ -562,7 +562,7 @@ Path trochoids::Trochoid::getTrochoidNumerical(bool exhaustive_solve_only, doubl
     vw = sqrt(pow(problem.wind[1], 2) + pow(problem.wind[0], 2));
     phi1 = trochoids::WrapTo2Pi(problem.X0[2]);
     phi2 = trochoids::WrapTo2Pi(problem.Xf[2]);
-    if (!exhaustive_solve_only && abs(vw) < EPSILON)
+    if (this->use_dubins_if_low_wind && abs(vw) < EPSILON)
     {
         dubins_solve(phi1, phi2,
                     x0, xf,
