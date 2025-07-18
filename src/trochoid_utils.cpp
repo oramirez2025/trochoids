@@ -100,7 +100,6 @@ bool trochoids::get_trochoid_path(const XYZPsiState &s1,
                                 double waypoint_distance)
 {
     trochoids::Trochoid trochoid;
-    trochoid.use_trochoid_classification = true;
     trochoid.problem.v = v;
     trochoid.problem.wind = {wind[0], wind[1]};
     trochoid.problem.max_kappa = max_kappa;
@@ -132,7 +131,6 @@ double trochoids::get_length(const XYZPsiState &s1,
                              double max_kappa)
 {
     trochoids::Trochoid trochoid;
-    trochoid.use_trochoid_classification = true;
     trochoid.problem.v = v;
     trochoid.problem.wind = {wind[0], wind[1]};
     trochoid.problem.max_kappa = max_kappa;

@@ -61,8 +61,9 @@ namespace Dubins
             double t = mod2pi(-alpha + theta);
             double p = sqrt(std::max(tmp, 0.));
             double q = mod2pi(beta - theta);
-            assert(fabs(p * cos(alpha + t) - sa + sb - d) < 2 * DUBINS_EPS);
-            assert(fabs(p * sin(alpha + t) + ca - cb) < 2 * DUBINS_EPS);
+            double tolerance = std::max(2 * DUBINS_EPS, 1e-12 * p);
+            assert(fabs(p * cos(alpha + t) - sa + sb - d) < tolerance);
+            assert(fabs(p * sin(alpha + t) + ca - cb) < tolerance);
             assert(mod2pi(alpha + t + q - beta + .5 * DUBINS_EPS) < DUBINS_EPS);
             return DubinsStateSpace::DubinsPath(DubinsStateSpace::dubinsPathType[0], t, p, q);
         }
@@ -79,8 +80,9 @@ namespace Dubins
             double t = mod2pi(alpha - theta);
             double p = sqrt(std::max(tmp, 0.));
             double q = mod2pi(-beta + theta);
-            assert(fabs(p * cos(alpha - t) + sa - sb - d) < 2* DUBINS_EPS);
-            assert(fabs(p * sin(alpha - t) - ca + cb) < 2 * DUBINS_EPS);
+            double tolerance = std::max(2 * DUBINS_EPS, 1e-12 * p);
+            assert(fabs(p * cos(alpha - t) + sa - sb - d) < tolerance);
+            assert(fabs(p * sin(alpha - t) - ca + cb) < tolerance);
             assert(mod2pi(alpha - t - q - beta + .5 * DUBINS_EPS) < DUBINS_EPS);
             return DubinsStateSpace::DubinsPath(DubinsStateSpace::dubinsPathType[1], t, p, q);
         }
@@ -97,8 +99,9 @@ namespace Dubins
             double theta = atan2(ca + cb, d - sa - sb) - atan2(2., p);
             double t = mod2pi(alpha - theta);
             double q = mod2pi(beta - theta);
-            assert(fabs(p * cos(alpha - t) - 2. * sin(alpha - t) + sa + sb - d) < 2 * DUBINS_EPS);
-            assert(fabs(p * sin(alpha - t) + 2. * cos(alpha - t) - ca - cb) < 2 * DUBINS_EPS);
+            double tolerance = std::max(2 * DUBINS_EPS, 1e-12 * p);
+            assert(fabs(p * cos(alpha - t) - 2. * sin(alpha - t) + sa + sb - d) < tolerance);
+            assert(fabs(p * sin(alpha - t) + 2. * cos(alpha - t) - ca - cb) < tolerance);
             assert(mod2pi(alpha - t + q - beta + .5 * DUBINS_EPS) < DUBINS_EPS);
             return DubinsStateSpace::DubinsPath(DubinsStateSpace::dubinsPathType[2], t, p, q);
         }
@@ -115,8 +118,9 @@ namespace Dubins
             double theta = atan2(-ca - cb, d + sa + sb) - atan2(-2., p);
             double t = mod2pi(-alpha + theta);
             double q = mod2pi(-beta + theta);
-            assert(fabs(p * cos(alpha + t) + 2. * sin(alpha + t) - sa - sb - d) < 2 * DUBINS_EPS);
-            assert(fabs(p * sin(alpha + t) - 2. * cos(alpha + t) + ca + cb) < 2 * DUBINS_EPS);
+            double tolerance = std::max(2 * DUBINS_EPS, 1e-12 * p);
+            assert(fabs(p * cos(alpha + t) + 2. * sin(alpha + t) - sa - sb - d) < tolerance);
+            assert(fabs(p * sin(alpha + t) - 2. * cos(alpha + t) + ca + cb) < tolerance);
             assert(mod2pi(alpha + t - q - beta + .5 * DUBINS_EPS) < DUBINS_EPS);
             return DubinsStateSpace::DubinsPath(DubinsStateSpace::dubinsPathType[3], t, p, q);
         }
@@ -313,13 +317,9 @@ Dubins::DubinsStateSpace::DubinsPath Dubins::DubinsStateSpace::dubins_matrix(con
             {
                 return dubinsrsr;
             }
-            else if (S13 > 0)
-            {
-                return dubinsLSR(d, alpha, beta);
-            }
             else
             {
-                return Dubins::dubins(d, alpha, beta);
+                return dubinsLSR(d, alpha, beta);
             }
         }
         else if (init_quadrant == 2 && final_quadrant == 1)
@@ -493,13 +493,9 @@ Dubins::DubinsStateSpace::DubinsPath Dubins::DubinsStateSpace::dubins_matrix(con
                 {
                     return dubinslsl;
                 }
-                else if (S122 > 0)
-                {
-                    return dubinsrsl;
-                }
                 else
                 {
-                    return Dubins::dubins(d, alpha, beta);
+                    return dubinsrsl;
                 }
             }
             else
@@ -512,13 +508,9 @@ Dubins::DubinsStateSpace::DubinsPath Dubins::DubinsStateSpace::dubins_matrix(con
                 {
                     return dubinsrsr;
                 }
-                else if (S222 > 0)
-                {
-                    return dubinsrsl;
-                }
                 else
                 {
-                    return Dubins::dubins(d, alpha, beta);
+                    return dubinsrsl;
                 }
             }
         }
@@ -537,13 +529,9 @@ Dubins::DubinsStateSpace::DubinsPath Dubins::DubinsStateSpace::dubins_matrix(con
                 {
                     return dubinsrsr;
                 }
-                else if (S133 > 0)
-                {
-                    return dubinslsr;
-                }
                 else
                 {
-                    return Dubins::dubins(d, alpha, beta);
+                    return dubinslsr;
                 }
             }
             else
@@ -556,13 +544,9 @@ Dubins::DubinsStateSpace::DubinsPath Dubins::DubinsStateSpace::dubins_matrix(con
                 {
                     return dubinslsl;
                 }
-                else if (S233 > 0)
-                {
-                    return dubinslsr;
-                }
                 else
                 {
-                    return Dubins::dubins(d, alpha, beta);
+                    return dubinslsr;
                 }
             }
         }

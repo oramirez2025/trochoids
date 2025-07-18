@@ -105,3 +105,51 @@ TEST(TestChebyshev, trochoid_compare_methods_random_wind_varkappa)
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
     std::cout << "Total time: " << duration.count() << " ms" << std::endl;
 }
+
+
+// This was a case where numerical error of sin(x) was causing issues with the dubins assert
+TEST(TestChebyshev, unit_test_edge_cases1){
+    double desired_speed = 50;
+    double max_kappa = 0.0033911;
+
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = desired_speed;
+    trochoid.problem.wind = {0, 0, 0};
+
+
+    trochoid.problem.max_kappa = max_kappa;
+    trochoid.problem.Xf = {-521.029, 364.036, 0};
+    trochoid.problem.Xf = {-407, -340, 0};
+
+    // This one is the actual issue
+    trochoid.use_dubins_if_low_wind = false;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = false;
+    Path path_no_dubins = trochoid.getTrochoid();
+    EXPECT_TRUE(path_no_dubins.size() != 0);
+    double path_length_no_dubins = trochoids::Trochoid::get_length(path_no_dubins);
+}
+
+// This was a case where numerical error of sin(x) was causing issues with the dubins assert
+TEST(TestChebyshev, unit_test_edge_cases2){
+    double desired_speed = 50;
+    double max_kappa = 0.025151422343509689;
+
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = desired_speed;
+    trochoid.problem.wind = {0, 0, 0};
+
+
+    trochoid.problem.max_kappa = max_kappa;
+    trochoid.problem.X0 = {773.62942234084744, -699.73428747120681, 0};
+    trochoid.problem.Xf = {90.80313332531523, 656.94323838141622, 0};
+
+    // This one is the actual issue
+    trochoid.use_dubins_if_low_wind = false;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = false;
+    Path path_no_dubins = trochoid.getTrochoid();
+    EXPECT_TRUE(path_no_dubins.size() != 0);
+    double path_length_no_dubins = trochoids::Trochoid::get_length(path_no_dubins);
+
+}
