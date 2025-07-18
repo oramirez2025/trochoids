@@ -60,8 +60,6 @@ class Trochoid
     double waypoint_distance = 0;
 
 public:
-    typedef std::vector<std::tuple<double, double, double>> Path;
-
     struct Problem
     {
         std::vector<double> X0;  // x, y, psi
