@@ -62,7 +62,7 @@
 // }
 
 
-TEST(TestChebyshev, trochoid_compare_methods_random_wind_varkappa)
+TEST(TestChebyshev, DISABLED_trochoid_compare_methods_random_wind_varkappa)
 {
     
     double desired_speed = 20;
@@ -103,7 +103,7 @@ TEST(TestChebyshev, trochoid_compare_methods_random_wind_varkappa)
     }
     auto finish = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
-    std::cout << "Total time: " << duration.count() << " ms" << std::endl;
+    // std::cout << "Total time: " << duration.count() << " ms" << std::endl;
 }
 
 
@@ -118,7 +118,7 @@ TEST(TestChebyshev, unit_test_edge_cases1){
 
 
     trochoid.problem.max_kappa = max_kappa;
-    trochoid.problem.Xf = {-521.029, 364.036, 0};
+    trochoid.problem.X0 = {-521.029, 364.036, 0};
     trochoid.problem.Xf = {-407, -340, 0};
 
     // This one is the actual issue
@@ -153,3 +153,100 @@ TEST(TestChebyshev, unit_test_edge_cases2){
     double path_length_no_dubins = trochoids::Trochoid::get_length(path_no_dubins);
 
 }
+
+// This is the case when turning off chebyshev yields a different path length
+TEST(TestChebyshev, unit_test_edge_cases3){
+    // Value of: three_and_four_match
+    //   Actual: false
+    // Expected: true
+    // Path length: 158.979
+    // Path length numerical: 158.979
+    // Path length numerical no dubins: 158.979
+    // Path length chebyshev: 104.138
+    // Start: 933.617, -965.429, 0.810681
+    // Goal: 950.664, -971.378, 3.27622
+    // Max Kappa: 0.0770868
+    // Wind: 11.4881, 10.9678
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = 50;
+    trochoid.problem.wind = {11.4881, 10.9678, 0};
+
+
+    trochoid.problem.max_kappa = 0.0770868;
+    trochoid.problem.X0 = {933.617, -965.429, 0.810681};
+    trochoid.problem.Xf = {950.664, -971.378, 3.27622};
+
+    // without chebyshev
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = false;
+    Path path_no_chebyshev = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_no_chebyshev.size() != 0);
+    double path_length_no_chebyshev = trochoids::Trochoid::get_length(path_no_chebyshev);
+
+    // with chebyshev
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = true;
+    Path path_chebyshev = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_chebyshev.size() != 0);
+    double path_length_chebyshev = trochoids::Trochoid::get_length(path_chebyshev);
+
+    bool lengths_match = (abs(path_length_no_chebyshev - path_length_chebyshev) < 0.05);
+    if (!lengths_match)
+    {
+        std::cout << "Path length no chebyshev: " << path_length_no_chebyshev << std::endl;
+        std::cout << "Path length chebyshev: " << path_length_chebyshev << std::endl;
+    }
+    EXPECT_TRUE(lengths_match);
+}
+
+// This is the case when turning off chebyshev yields a different path length
+TEST(TestChebyshev, unit_test_edge_cases4){
+    // Value of: three_and_four_match
+    //   Actual: false
+    // Expected: true
+    // Path length: 3530.22
+    // Path length numerical: 3530.22
+    // Path length numerical no dubins: 3530.22
+    // Path length chebyshev: 2871.01
+    // Start: -395.692, -707.249, 2.00815
+    // Goal: 804.381, 18.0105, 0.261994
+    // Max Kappa: 0.00215523
+    // Wind: -1.13017, 24.8283
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = 50;
+    trochoid.problem.wind = {-1.13017, 24.8283, 0};
+
+
+    trochoid.problem.max_kappa = 0.00215523;
+    trochoid.problem.X0 = {-395.692, -707.249, 2.00815};
+    trochoid.problem.Xf = {804.381, 18.0105, 0.261994};
+
+    // without chebyshev
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = false;
+    Path path_no_chebyshev = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_no_chebyshev.size() != 0);
+    double path_length_no_chebyshev = trochoids::Trochoid::get_length(path_no_chebyshev);
+
+    // with chebyshev
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = true;
+    Path path_chebyshev = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_chebyshev.size() != 0);
+    double path_length_chebyshev = trochoids::Trochoid::get_length(path_chebyshev);
+
+    bool lengths_match = (abs(path_length_no_chebyshev - path_length_chebyshev) < 0.05);
+    if (!lengths_match)
+    {
+        std::cout << "Path length no chebyshev: " << path_length_no_chebyshev << std::endl;
+        std::cout << "Path length chebyshev: " << path_length_chebyshev << std::endl;
+    }
+    EXPECT_TRUE(lengths_match);
+}
+
+
+

@@ -24,3 +24,4 @@ __pycache__
 *.png
 !img/*.png
 *.svg
+.DS_Store
