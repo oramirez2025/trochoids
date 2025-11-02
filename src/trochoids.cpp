@@ -59,7 +59,7 @@ std::vector<std::tuple<double, double, double>> get_trochoid_cases(bool include_
     del.push_back(std::tuple<double, double, double>(1, 0, -1));  // LSR
     del.push_back(std::tuple<double, double, double>(-1, 0, -1)); // RSR
     if (include_BBB){
-        del.push_back(std::tuple<double, double, double>(-1, 1, -1)); // RLR (it seems these are flipped?)
+        del.push_back(std::tuple<double, double, double>(-1, 1, -1)); // RLR
         del.push_back(std::tuple<double, double, double>(1, -1, 1));  // LRL
     }
     return del;
