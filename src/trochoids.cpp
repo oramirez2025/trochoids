@@ -1032,9 +1032,6 @@ double trochoids::Trochoid::func(double t, double k)
 {
     double F = v*((xt20-xt10)+vw*(t*((del1/del2)-1)+(((trochoids::WrapTo2Pi(phi1-phi2)+2*k*M_PI)/(del2*w)))));
     double val = E*cos(del1*w*t+phi1) + F*sin(del1*w*t+phi1)-G;
-
-    
-
     return val;
 }
 std::pair<double,double> trochoids::Trochoid::func2D(std::pair<double,double> t)
