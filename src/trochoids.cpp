@@ -588,6 +588,7 @@ Path trochoids::Trochoid::getTrochoidNumerical(double waypoint_distance)
             BBB_solve(del1, del2, phi1, phi2,
                     vw, step_size, xt10, xt20,
                     yt10, yt20, best_time, final_path);
+            continue;
         } 
         del2 = del3;
         phi1 = trochoids::WrapTo2Pi(problem.X0[2] - atan2(problem.wind[1], problem.wind[0]));
@@ -838,7 +839,11 @@ void trochoids::Trochoid::BBB_solve(double &del1, double &del2,
         for (double T = 0; T <= 2 * t_2pi; T = T + step_size) {
             std::pair<double,double> t = newtonRaphson2D(t_a,T,10000); // Note: t.first = t_a' and t.second = T', where t_a' and T' are possible roots
             double diff = problem.Xf[2] - problem.X0[2];
-            diff = del2 < 0 ? diff - M_2PI : diff;
+            if (del2 == -1 && diff > 0) {
+                diff -= M_2PI;
+            } else if (del2 == 1 && diff < 0) {
+                diff += M_2PI;
+            }
             double t_b = t.first + t.second/2 + (diff)/(2 * del2 * w); // t.first = t_a and t.second = T
             std::pair<double,double> val = func2D(t);
             bool in_bounds = (0 <= t.first && t.first < 2 * t_2pi && t.first < t_b &&
@@ -853,7 +858,11 @@ void trochoids::Trochoid::BBB_solve(double &del1, double &del2,
     // we'll need to give the new best path
     if (best.second < best_time) {
         double diff = problem.Xf[2] - problem.X0[2];
-        diff = del2 < 0 ? diff - M_2PI : diff;
+        if (del2 == -1 && diff > 0) {
+            diff -= M_2PI;
+        } else if (del2 == 1 && diff < 0) {
+            diff += M_2PI;
+        }
         double t_b = best.first + best.second/2 + (diff)/(2 * del2 * w);
         final_path = get_path_BBB(best.first, t_b, best.second);
         best_time = best.second;
@@ -1040,7 +1049,12 @@ std::pair<double,double> trochoids::Trochoid::func2D(std::pair<double,double> t)
     double yf = -problem.Xf[0] * sin(psi_w) + problem.Xf[1] * cos(psi_w); 
     double inside1 = del1 * w * t.first + phi1; 
     double inside2 = del2 * w * t.second/2.0 + problem.Xf[2]/2.0 + del1 * w * t.first + phi1/2.0;
-    inside2 = inside2 < 0 ? trochoids::WrapToPi(inside2) : inside2;
+    double diff = (problem.Xf[2] - problem.X0[2]);
+    if (del2 == -1 && diff > 0) {
+        inside2 -= M_PI;
+    } else if (del2 == 1 && diff < 0) {
+        inside2 += M_PI;
+    }
     double xt30 = xf - (v/(del1 * w)) * sin(problem.Xf[2]) - vw * t.second; 
     double yt30 = yf + (v/(del1 * w)) * cos(problem.Xf[2]); 
     double f1 = ((2 * v)/(del1 * w)) * sin(inside1) + xt10 - xt30 + ((2 * v)/(del2 * w)) * sin(inside2);
