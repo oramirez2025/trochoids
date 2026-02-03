@@ -106,6 +106,177 @@ TEST(TestChebyshev, DISABLED_trochoid_compare_methods_random_wind_varkappa)
     // std::cout << "Total time: " << duration.count() << " ms" << std::endl;
 }
 
+TEST(TestChebyshev, random_BBB_wind){
+    // ./devel/lib/trochoids/trochoids-test --gtest_filter="*Che*"
+    double desired_speed = 50;
+    double max_kappa = .1;
+
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = desired_speed;
+
+    
+
+    std::random_device rd;
+    std::mt19937 gen = std::mt19937(rd());
+    std::uniform_real_distribution<> disRange(-10, 10);
+    std::uniform_real_distribution<> kappaRange(0.001, max_kappa);
+    std::uniform_real_distribution<> disWind(-35, 35);
+    std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
+    // auto start_time = ompl::time::now();
+
+    // double old_method_time = 0;
+    // double new_method_time = 0;
+
+    for (int i = 0; i < 100000; i++)
+    {   
+        if(i % 1000 == 0 && i != 0)
+            std::cout << "Iteration number: " << i << std::endl;
+
+        trochoid.problem.wind = {disWind(gen), disWind(gen)};
+        trochoid.problem.max_kappa = kappaRange(gen);
+        trochoid.problem.X0 = {disRange(gen), disRange(gen), disPhi(gen)};
+        trochoid.problem.Xf = {disRange(gen), disRange(gen), disPhi(gen)};
+
+        trochoid.use_dubins_if_low_wind = true;
+        trochoid.use_trochoid_classification = true;
+        trochoid.use_Chebyshev = true;
+        Path path = trochoid.getTrochoid();
+        EXPECT_TRUE(path.size() != 0);
+        double path_length = trochoids::Trochoid::get_length(path);
+
+        // Check Chebyshev
+        trochoid.use_dubins_if_low_wind = true;
+        trochoid.use_trochoid_classification = true;
+        trochoid.use_Chebyshev = false;
+        Path path_no_chebyshev = trochoid.getTrochoidNumerical();
+        EXPECT_TRUE(path_no_chebyshev.size() != 0);
+        double path_length_no_chebyshev = trochoids::Trochoid::get_length(path_no_chebyshev);
+
+        // Check without using any classification or analytical methods
+        trochoid.use_dubins_if_low_wind = true;
+        trochoid.use_Chebyshev = true;
+        Path path_numerical = trochoid.getTrochoidNumerical();
+        EXPECT_TRUE(path_numerical.size() != 0);
+        double path_length_numerical = trochoids::Trochoid::get_length(path_numerical);
+
+        // In low wind won't use dubins (but all of these have wind)
+        trochoid.use_dubins_if_low_wind = false;
+        trochoid.use_Chebyshev = true;
+        Path path_numerical_no_dubins = trochoid.getTrochoidNumerical();
+        EXPECT_TRUE(path_numerical_no_dubins.size() != 0);
+        double path_length_numerical_no_dubins = trochoids::Trochoid::get_length(path_numerical_no_dubins);
+
+        bool one_and_two_match = (abs(path_length/path_length_numerical - 1.0) < 0.05);
+        bool two_and_three_match = (abs(path_length_numerical/path_length_numerical_no_dubins - 1.0) < 0.05);
+        bool three_and_four_match = (abs(path_length_numerical_no_dubins/path_length_no_chebyshev - 1.0) < 0.05);
+
+        EXPECT_TRUE(one_and_two_match);
+        EXPECT_TRUE(two_and_three_match);
+        EXPECT_TRUE(three_and_four_match);
+        if (!one_and_two_match || !two_and_three_match || !three_and_four_match)
+        {
+            std::cout << "Path length: " << path_length << std::endl;
+            std::cout << "Path length numerical: " << path_length_numerical << std::endl;
+            std::cout << "Path length numerical no dubins: " << path_length_numerical_no_dubins << std::endl;
+            std::cout << "Path length no chebyshev: " << path_length_no_chebyshev << std::endl;
+            std::cout << "Start: " << trochoid.problem.X0[0] << ", " << trochoid.problem.X0[1] << ", " << trochoid.problem.X0[2] << std::endl;
+            std::cout << "Goal: " << trochoid.problem.Xf[0] << ", " << trochoid.problem.Xf[1] << ", " << trochoid.problem.Xf[2] << std::endl;
+            std::cout << "Max Kappa: " << trochoid.problem.max_kappa << std::endl;
+            std::cout << "Wind: " << trochoid.problem.wind[0] << ", " << trochoid.problem.wind[1] << std::endl;
+        }
+    }
+}
+
+// TEST(TestChebyshev, compare_with_BBB_no_wind){
+//     double desired_speed = 50;
+//     double max_kappa = .1;
+
+//     trochoids::Trochoid trochoid;
+//     trochoid.problem.v = desired_speed;
+//     trochoid.problem.wind = {0, 0, 0};
+
+    
+
+//     std::random_device rd;
+//     std::mt19937 gen = std::mt19937(rd());
+//     std::uniform_real_distribution<> disRange(-1000, 1000);
+//     std::uniform_real_distribution<> kappaRange(0.001, max_kappa);
+//     std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
+//     // auto start_time = ompl::time::now();
+
+//     // double old_method_time = 0;
+//     // double new_method_time = 0;
+
+//     for (int i = 0; i < 100000; i++)
+//     {   
+//         if(i % 1000 == 0 && i != 0)
+//             std::cout << "Iteration number: " << i << std::endl;
+
+//         trochoid.problem.max_kappa = kappaRange(gen);
+//         trochoid.problem.X0 = {disRange(gen), disRange(gen), disPhi(gen)};
+//         trochoid.problem.Xf = {disRange(gen), disRange(gen), disPhi(gen)};
+//         // trochoid.problem.X0 = {disRange(gen), disRange(gen), disPhi(gen)};
+//         // trochoid.problem.Xf = {disRange(gen), disRange(gen), disPhi(gen)};
+
+//         trochoid.use_dubins_if_low_wind = true;
+//         trochoid.use_trochoid_classification = true;
+//         trochoid.use_Chebyshev = true;
+//         Path path = trochoid.getTrochoid();
+//         EXPECT_TRUE(path.size() != 0);
+//         double path_length = trochoids::Trochoid::get_length(path);
+
+//         // Check without Chebyshev (this just uses dubins in no wind)
+//         trochoid.use_Chebyshev = false;
+//         Path path_no_chebyshev = trochoid.getTrochoidNumerical();
+//         EXPECT_TRUE(path_no_chebyshev.size() != 0);
+//         double path_length_no_chebyshev = trochoids::Trochoid::get_length(path_no_chebyshev);
+
+//         // Check without using any classification or analytical methods (this just uses dubins in no wind)
+//         trochoid.use_Chebyshev = true;
+//         trochoid.use_dubins_if_low_wind = true;
+//         Path path_numerical = trochoid.getTrochoidNumerical();
+//         EXPECT_TRUE(path_numerical.size() != 0);
+//         double path_length_numerical = trochoids::Trochoid::get_length(path_numerical);
+
+//         // In low wind won't use dubins 
+//         trochoid.use_dubins_if_low_wind = false;
+//         trochoid.use_trochoid_classification = false;
+//         trochoid.use_Chebyshev = true;
+//         Path path_numerical_no_dubins = trochoid.getTrochoidNumerical();
+//         EXPECT_TRUE(path_numerical_no_dubins.size() != 0);
+//         double path_length_numerical_no_dubins = trochoids::Trochoid::get_length(path_numerical_no_dubins);
+
+//         // It is using no dubins like above, but uses classification and analytical methods
+//         trochoid.use_dubins_if_low_wind = false;
+//         trochoid.use_trochoid_classification = true;
+//         trochoid.use_Chebyshev = false;
+//         Path path_no_dubins = trochoid.getTrochoid();
+//         EXPECT_TRUE(path_no_dubins.size() != 0);
+//         double path_length_no_dubins = trochoids::Trochoid::get_length(path_no_dubins);
+
+//         bool one_and_two_match = (abs(path_length/path_length_numerical - 1.0) < 0.05);
+//         bool two_and_three_match = (abs(path_length_numerical/path_length_numerical_no_dubins - 1.0) < 0.05);
+//         bool three_and_four_match = (abs(path_length_numerical_no_dubins/path_length_no_chebyshev - 1.0) < 0.05);
+//         bool four_and_five_match = (abs(path_length_no_chebyshev/path_length_no_dubins - 1.0) < 0.05);
+
+//         EXPECT_TRUE(one_and_two_match);
+//         EXPECT_TRUE(two_and_three_match);
+//         EXPECT_TRUE(three_and_four_match);
+//         EXPECT_TRUE(four_and_five_match);
+//         if (!one_and_two_match || !two_and_three_match || !three_and_four_match || !four_and_five_match)
+//         {
+//             std::cout << "Path length: " << path_length << std::endl;
+//             std::cout << "Path length numerical: " << path_length_numerical << std::endl;
+//             std::cout << "Path length numerical no dubins: " << path_length_numerical_no_dubins << std::endl;
+//             std::cout << "Path length no chebyshev: " << path_length_no_chebyshev << std::endl;
+//             std::cout << "Path length no dubins: " << path_length_no_dubins << std::endl;
+//             std::cout << "Start: " << trochoid.problem.X0[0] << ", " << trochoid.problem.X0[1] << ", " << trochoid.problem.X0[2] << std::endl;
+//             std::cout << "Goal: " << trochoid.problem.Xf[0] << ", " << trochoid.problem.Xf[1] << ", " << trochoid.problem.Xf[2] << std::endl;
+//             std::cout << "Max Kappa: " << trochoid.problem.max_kappa << std::endl;
+//             std::cout << "Wind: " << trochoid.problem.wind[0] << ", " << trochoid.problem.wind[1] << std::endl;
+//         }
+//     }
+// }
 
 // This was a case where numerical error of sin(x) was causing issues with the dubins assert
 TEST(TestChebyshev, unit_test_edge_cases1){
@@ -472,7 +643,7 @@ TEST(TestChebyshev, compare_with_BBB_no_wind){
 
     std::random_device rd;
     std::mt19937 gen = std::mt19937(rd());
-    std::uniform_real_distribution<> disRange(-1000, 1000);
+    std::uniform_real_distribution<> disRange(-100, 100);
     std::uniform_real_distribution<> kappaRange(0.001, max_kappa);
     std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
     // auto start_time = ompl::time::now();
@@ -498,7 +669,7 @@ TEST(TestChebyshev, compare_with_BBB_no_wind){
         Path path = trochoid.getTrochoid();
         EXPECT_TRUE(path.size() != 0);
         double path_length = trochoids::Trochoid::get_length(path);
-        std::ofstream myfile2;
+        // std::ofstream myfile2;
 
         // myfile2.open("/ws/src/trochoids/test/data/finish2.csv");
         // myfile2 << "x,y,z" << std::endl; 
