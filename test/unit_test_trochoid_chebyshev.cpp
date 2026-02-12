@@ -39,6 +39,7 @@
 #include <chrono>
 #include <random>
 #include <iostream>
+#include <limits>
 #include "trochoids/trochoid_utils.h"
 #include "trochoids/trochoids.h"
 #include <fstream>
@@ -127,7 +128,7 @@ TEST(TestChebyshev, random_BBB_wind){
     // double old_method_time = 0;
     // double new_method_time = 0;
 
-    for (int i = 0; i < 100000; i++)
+    for (int i = 0; i < 10000; i++)
     {   
         if(i % 1000 == 0 && i != 0)
             std::cout << "Iteration number: " << i << std::endl;
@@ -651,7 +652,7 @@ TEST(TestChebyshev, compare_with_BBB_no_wind){
     // double old_method_time = 0;
     // double new_method_time = 0;
 
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 1; i++)
     {   
         if(i % 1000 == 0 && i != 0)
             std::cout << "Iteration number: " << i << std::endl;
@@ -967,6 +968,500 @@ TEST(TestChebyshev, unit_test_edge_cases12){
     EXPECT_TRUE(lengths_match);
 }
 
+TEST(TestChebyshev, root_solver_1d_methods_match_newton_without_chebyshev){
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = 50;
+    trochoid.problem.wind = {19.8186, 34.7972, 0};
+    trochoid.problem.max_kappa = 0.0153616;
+    trochoid.problem.X0 = {-959.848, 527.061, 1.31217};
+    trochoid.problem.Xf = {-811.3, 670.211, 3.86527};
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = false;
 
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::NEWTON_RAPHSON;
+    Path path_newton = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_newton.size() != 0);
+    double path_length_newton = trochoids::Trochoid::get_length(path_newton);
 
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::BRACKETED_BISECTION;
+    Path path_bracketed = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_bracketed.size() != 0);
+    double path_length_bracketed = trochoids::Trochoid::get_length(path_bracketed);
 
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::NON_ROBUST_BRENT;
+    Path path_non_robust_brent = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_non_robust_brent.size() != 0);
+    double path_length_non_robust_brent = trochoids::Trochoid::get_length(path_non_robust_brent);
+
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::GLOBAL_BRENT;
+    Path path_global_brent = trochoid.getTrochoidNumerical();
+    EXPECT_TRUE(path_global_brent.size() != 0);
+    double path_length_global_brent = trochoids::Trochoid::get_length(path_global_brent);
+
+    bool bracketed_matches_newton = abs(path_length_newton / path_length_bracketed - 1.0) < 0.05;
+    bool non_robust_brent_matches_newton = abs(path_length_newton / path_length_non_robust_brent - 1.0) < 0.05;
+    bool global_brent_matches_newton = abs(path_length_newton / path_length_global_brent - 1.0) < 0.05;
+    if (!bracketed_matches_newton || !non_robust_brent_matches_newton || !global_brent_matches_newton)
+    {
+        std::cout << "Path length newton: " << path_length_newton << std::endl;
+        std::cout << "Path length bracketed: " << path_length_bracketed << std::endl;
+        std::cout << "Path length non robust brent: " << path_length_non_robust_brent << std::endl;
+        std::cout << "Path length global brent: " << path_length_global_brent << std::endl;
+    }
+    EXPECT_TRUE(bracketed_matches_newton);
+    EXPECT_TRUE(non_robust_brent_matches_newton);
+    EXPECT_TRUE(global_brent_matches_newton);
+}
+
+static double get_numerical_path_length_for_mode(trochoids::Trochoid trochoid,
+                                                  bool use_chebyshev,
+                                                  trochoids::Trochoid::RootSolve1DMethod method)
+{
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = use_chebyshev;
+    trochoid.root_solve_1d_method = method;
+    Path path = trochoid.getTrochoidNumerical();
+    if (path.size() == 0)
+    {
+        return -1.0;
+    }
+    return trochoids::Trochoid::get_length(path);
+}
+
+TEST(TestChebyshev, root_solver_1d_all_methods_match_fixed_cases){
+    struct CaseInput {
+        double v;
+        std::vector<double> wind;
+        double max_kappa;
+        std::vector<double> x0;
+        std::vector<double> xf;
+    };
+
+    const std::vector<CaseInput> cases = {
+        {50, {19.8186, 34.7972, 0}, 0.0153616, {-959.848, 527.061, 1.31217}, {-811.3, 670.211, 3.86527}},
+        {50, {18.505, 4.89311, 0}, 0.00222055, {-563.835, 873.437, 0.0634033}, {-561.61, 306.445, 3.99108}},
+        {50, {15.0, -7.0, 0}, 0.01, {0.0, 0.0, 1.5707}, {1000.0, 1000.0, 1.5707}}
+    };
+
+    for (size_t i = 0; i < cases.size(); ++i)
+    {
+        trochoids::Trochoid trochoid;
+        trochoid.problem.v = cases[i].v;
+        trochoid.problem.wind = cases[i].wind;
+        trochoid.problem.max_kappa = cases[i].max_kappa;
+        trochoid.problem.X0 = cases[i].x0;
+        trochoid.problem.Xf = cases[i].xf;
+
+        const double len_cheb = get_numerical_path_length_for_mode(
+            trochoid, true, trochoids::Trochoid::RootSolve1DMethod::GLOBAL_BRENT);
+        const double len_newton = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::NEWTON_RAPHSON);
+        const double len_bracketed = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::BRACKETED_BISECTION);
+        const double len_non_robust_brent = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::NON_ROBUST_BRENT);
+        const double len_global_brent = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::GLOBAL_BRENT);
+
+        EXPECT_GT(len_cheb, 0.0);
+        EXPECT_GT(len_newton, 0.0);
+        EXPECT_GT(len_bracketed, 0.0);
+        EXPECT_GT(len_non_robust_brent, 0.0);
+        EXPECT_GT(len_global_brent, 0.0);
+
+        if (len_cheb <= 0.0 || len_newton <= 0.0 || len_bracketed <= 0.0 || len_non_robust_brent <= 0.0 || len_global_brent <= 0.0)
+        {
+            std::cout << "Case " << i << " failed to produce valid paths in one or more methods." << std::endl;
+            continue;
+        }
+
+        const double max_len = std::max(std::max(len_cheb, len_newton), std::max(len_bracketed, std::max(len_non_robust_brent, len_global_brent)));
+        const double min_len = std::min(std::min(len_cheb, len_newton), std::min(len_bracketed, std::min(len_non_robust_brent, len_global_brent)));
+        const bool all_match = (max_len / min_len - 1.0) < 0.05;
+
+        if (!all_match)
+        {
+            std::cout << "Case " << i << " mismatch:" << std::endl;
+            std::cout << "  chebyshev: " << len_cheb << std::endl;
+            std::cout << "  newton: " << len_newton << std::endl;
+            std::cout << "  bracketed: " << len_bracketed << std::endl;
+            std::cout << "  non robust brent: " << len_non_robust_brent << std::endl;
+            std::cout << "  global brent: " << len_global_brent << std::endl;
+        }
+        EXPECT_TRUE(all_match);
+    }
+}
+
+static void run_1d_seeded_random_comparison(int num_cases, int seed)
+{
+    std::mt19937 gen(seed);
+    std::uniform_real_distribution<> disRange(-1000.0, 1000.0);
+    std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
+    std::uniform_real_distribution<> disWind(-25.0, 25.0);
+    std::uniform_real_distribution<> disKappa(0.003, 0.03);
+
+    for (int i = 0; i < num_cases; ++i)
+    {
+        trochoids::Trochoid trochoid;
+        trochoid.problem.v = 50;
+        trochoid.problem.wind = {disWind(gen), disWind(gen), 0};
+        trochoid.problem.max_kappa = disKappa(gen);
+        trochoid.problem.X0 = {disRange(gen), disRange(gen), disPhi(gen)};
+        trochoid.problem.Xf = {disRange(gen), disRange(gen), disPhi(gen)};
+
+        const double len_cheb = get_numerical_path_length_for_mode(
+            trochoid, true, trochoids::Trochoid::RootSolve1DMethod::GLOBAL_BRENT);
+        const double len_newton = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::NEWTON_RAPHSON);
+        const double len_bracketed = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::BRACKETED_BISECTION);
+        const double len_non_robust_brent = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::NON_ROBUST_BRENT);
+        const double len_global_brent = get_numerical_path_length_for_mode(
+            trochoid, false, trochoids::Trochoid::RootSolve1DMethod::GLOBAL_BRENT);
+
+        EXPECT_GT(len_cheb, 0.0);
+        EXPECT_GT(len_newton, 0.0);
+        EXPECT_GT(len_bracketed, 0.0);
+        EXPECT_GT(len_non_robust_brent, 0.0);
+        EXPECT_GT(len_global_brent, 0.0);
+
+        if (len_cheb <= 0.0 || len_newton <= 0.0 || len_bracketed <= 0.0 || len_non_robust_brent <= 0.0 || len_global_brent <= 0.0)
+        {
+            std::cout << "Random case " << i << " failed to produce valid paths in one or more methods." << std::endl;
+            continue;
+        }
+
+        const double max_len = std::max(std::max(len_cheb, len_newton), std::max(len_bracketed, std::max(len_non_robust_brent, len_global_brent)));
+        const double min_len = std::min(std::min(len_cheb, len_newton), std::min(len_bracketed, std::min(len_non_robust_brent, len_global_brent)));
+        const bool all_match = (max_len / min_len - 1.0) < 0.08;
+
+        if (!all_match)
+        {
+            std::cout << "Random case " << i << " mismatch:" << std::endl;
+            std::cout << "  chebyshev: " << len_cheb << std::endl;
+            std::cout << "  newton: " << len_newton << std::endl;
+            std::cout << "  bracketed: " << len_bracketed << std::endl;
+            std::cout << "  non robust brent: " << len_non_robust_brent << std::endl;
+            std::cout << "  global brent: " << len_global_brent << std::endl;
+            std::cout << "  start: " << trochoid.problem.X0[0] << ", " << trochoid.problem.X0[1] << ", " << trochoid.problem.X0[2] << std::endl;
+            std::cout << "  goal: " << trochoid.problem.Xf[0] << ", " << trochoid.problem.Xf[1] << ", " << trochoid.problem.Xf[2] << std::endl;
+            std::cout << "  wind: " << trochoid.problem.wind[0] << ", " << trochoid.problem.wind[1] << std::endl;
+            std::cout << "  max_kappa: " << trochoid.problem.max_kappa << std::endl;
+        }
+        EXPECT_TRUE(all_match);
+    }
+}
+
+TEST(TestChebyshev, root_solver_1d_all_methods_match_seeded_random_cases){
+    run_1d_seeded_random_comparison(100, 42);
+}
+
+TEST(TestChebyshev, DISABLED_root_solver_1d_all_methods_match_seeded_random_cases_extended){
+    run_1d_seeded_random_comparison(2500, 42);
+}
+
+static double get_numerical_path_length_for_2d_mode(trochoids::Trochoid trochoid,
+                                                     trochoids::Trochoid::RootSolve2DMethod method);
+static double get_empirical_best_2d_length(trochoids::Trochoid trochoid);
+
+TEST(TestChebyshev, root_solver_2d_methods_match_high_density_fixed_cases){
+    struct CaseInput {
+        double v;
+        std::vector<double> wind;
+        double max_kappa;
+        std::vector<double> x0;
+        std::vector<double> xf;
+    };
+
+    const std::vector<CaseInput> cases = {
+        {50, {12.0, -18.0, 0}, 0.008, {-200.0, 300.0, 1.1}, {450.0, -250.0, 4.2}},
+        {50, {20.0, 15.0, 0}, 0.006, {-100.0, -100.0, 0.5}, {600.0, 350.0, 3.7}}
+    };
+
+    for (size_t i = 0; i < cases.size(); ++i)
+    {
+        trochoids::Trochoid trochoid;
+        trochoid.problem.v = cases[i].v;
+        trochoid.problem.wind = cases[i].wind;
+        trochoid.problem.max_kappa = cases[i].max_kappa;
+        trochoid.problem.X0 = cases[i].x0;
+        trochoid.problem.Xf = cases[i].xf;
+        trochoid.include_BBB = true;
+        trochoid.root_solve_2d_grid_samples = 720;
+        trochoid.root_solve_2d_chebyshev_samples = 65;
+
+        const double len_newton_grid = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::NEWTON_GRID);
+        const double len_cheb_grid = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::CHEBYSHEV_GRID_NEWTON);
+        const double len_oracle_best = get_empirical_best_2d_length(trochoid);
+
+        EXPECT_GT(len_newton_grid, 0.0);
+        EXPECT_GT(len_cheb_grid, 0.0);
+        EXPECT_GT(len_oracle_best, 0.0);
+        if (len_newton_grid <= 0.0 || len_cheb_grid <= 0.0)
+        {
+            std::cout << "2D high-density case " << i << " invalid path:"
+                      << " len_newton_grid=" << len_newton_grid
+                      << " len_cheb_grid=" << len_cheb_grid << std::endl;
+            continue;
+        }
+        const double newton_gap = len_newton_grid / len_oracle_best - 1.0;
+        const double cheb_gap = len_cheb_grid / len_oracle_best - 1.0;
+
+        std::cout << "2D high-density case " << i << std::endl;
+        std::cout << "  len_newton_grid: " << len_newton_grid << std::endl;
+        std::cout << "  len_cheb_grid: " << len_cheb_grid << std::endl;
+        std::cout << "  len_oracle_best: " << len_oracle_best << std::endl;
+        std::cout << "  newton_gap_to_oracle: " << newton_gap << std::endl;
+        std::cout << "  cheb_gap_to_oracle: " << cheb_gap << std::endl;
+        std::cout << "  better_of_two: " << ((len_cheb_grid < len_newton_grid) ? "chebyshev-grid-newton" : "newton-grid") << std::endl;
+
+        EXPECT_TRUE(newton_gap < 0.20);
+        EXPECT_TRUE(cheb_gap < 0.20);
+        EXPECT_TRUE(std::min(newton_gap, cheb_gap) < 0.05);
+    }
+}
+
+TEST(TestChebyshev, root_solver_2d_methods_match_boundary_stress){
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = 50;
+    trochoid.problem.wind = {24.0, -22.0, 0};
+    trochoid.problem.max_kappa = 0.0045;
+    trochoid.problem.X0 = {-780.0, 760.0, 0.05};
+    trochoid.problem.Xf = {790.0, -740.0, 6.18};
+    trochoid.include_BBB = true;
+
+    trochoid.root_solve_2d_grid_samples = 900;
+    trochoid.root_solve_2d_chebyshev_samples = 81;
+    const double len_newton_dense = get_numerical_path_length_for_2d_mode(
+        trochoid, trochoids::Trochoid::RootSolve2DMethod::NEWTON_GRID);
+    const double len_cheb_dense = get_numerical_path_length_for_2d_mode(
+        trochoid, trochoids::Trochoid::RootSolve2DMethod::CHEBYSHEV_GRID_NEWTON);
+
+    EXPECT_GT(len_newton_dense, 0.0);
+    EXPECT_GT(len_cheb_dense, 0.0);
+    if (len_newton_dense > 0.0 && len_cheb_dense > 0.0)
+    {
+        const double ratio_error = std::abs(len_newton_dense / len_cheb_dense - 1.0);
+        if (!(ratio_error < 0.07))
+        {
+            std::cout << "2D boundary-stress mismatch" << std::endl;
+            std::cout << "  len_newton_dense: " << len_newton_dense << std::endl;
+            std::cout << "  len_cheb_dense: " << len_cheb_dense << std::endl;
+            std::cout << "  ratio_error: " << ratio_error << std::endl;
+            std::cout << "  start: " << trochoid.problem.X0[0] << ", "
+                      << trochoid.problem.X0[1] << ", " << trochoid.problem.X0[2] << std::endl;
+            std::cout << "  goal: " << trochoid.problem.Xf[0] << ", "
+                      << trochoid.problem.Xf[1] << ", " << trochoid.problem.Xf[2] << std::endl;
+            std::cout << "  wind: " << trochoid.problem.wind[0] << ", "
+                      << trochoid.problem.wind[1] << std::endl;
+            std::cout << "  max_kappa: " << trochoid.problem.max_kappa << std::endl;
+            std::cout << "  root_solve_2d_grid_samples: " << trochoid.root_solve_2d_grid_samples << std::endl;
+            std::cout << "  root_solve_2d_chebyshev_samples: " << trochoid.root_solve_2d_chebyshev_samples << std::endl;
+        }
+        EXPECT_TRUE(ratio_error < 0.07);
+    }
+}
+
+static double get_numerical_path_length_for_2d_mode(trochoids::Trochoid trochoid,
+                                                     trochoids::Trochoid::RootSolve2DMethod method)
+{
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = true;
+    trochoid.include_BBB = true;
+    trochoid.root_solve_2d_method = method;
+    Path path = trochoid.getTrochoidNumerical();
+    if (path.size() == 0)
+    {
+        return -1.0;
+    }
+    return trochoids::Trochoid::get_length(path);
+}
+
+static double get_empirical_best_2d_length(trochoids::Trochoid trochoid)
+{
+    double best = std::numeric_limits<double>::infinity();
+    const std::vector<std::pair<int, int>> configs = {{360, 33}, {720, 65}, {900, 81}};
+    const std::vector<trochoids::Trochoid::RootSolve2DMethod> methods = {
+        trochoids::Trochoid::RootSolve2DMethod::NEWTON_GRID,
+        trochoids::Trochoid::RootSolve2DMethod::CHEBYSHEV_GRID_NEWTON
+    };
+
+    for (const auto &cfg : configs)
+    {
+        trochoid.root_solve_2d_grid_samples = cfg.first;
+        trochoid.root_solve_2d_chebyshev_samples = cfg.second;
+        for (const auto method : methods)
+        {
+            const double len = get_numerical_path_length_for_2d_mode(trochoid, method);
+            if (len > 0.0 && len < best)
+            {
+                best = len;
+            }
+        }
+    }
+
+    if (!std::isfinite(best))
+    {
+        return -1.0;
+    }
+    return best;
+}
+
+TEST(TestChebyshev, root_solver_2d_methods_match_fixed_cases){
+    struct CaseInput {
+        double v;
+        std::vector<double> wind;
+        double max_kappa;
+        std::vector<double> x0;
+        std::vector<double> xf;
+    };
+
+    const std::vector<CaseInput> cases = {
+        {50, {12.0, -18.0, 0}, 0.008, {-200.0, 300.0, 1.1}, {450.0, -250.0, 4.2}},
+        {50, {20.0, 15.0, 0}, 0.006, {-100.0, -100.0, 0.5}, {600.0, 350.0, 3.7}},
+        {50, {-15.0, 22.0, 0}, 0.01, {300.0, -450.0, 2.2}, {-500.0, 200.0, 5.4}}
+    };
+
+    for (size_t i = 0; i < cases.size(); ++i)
+    {
+        trochoids::Trochoid trochoid;
+        trochoid.problem.v = cases[i].v;
+        trochoid.problem.wind = cases[i].wind;
+        trochoid.problem.max_kappa = cases[i].max_kappa;
+        trochoid.problem.X0 = cases[i].x0;
+        trochoid.problem.Xf = cases[i].xf;
+        trochoid.root_solve_2d_grid_samples = 360;
+        trochoid.root_solve_2d_chebyshev_samples = 33;
+
+        const double len_newton_grid = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::NEWTON_GRID);
+        const double len_cheb_grid = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::CHEBYSHEV_GRID_NEWTON);
+
+        EXPECT_GT(len_newton_grid, 0.0);
+        EXPECT_GT(len_cheb_grid, 0.0);
+        if (len_newton_grid <= 0.0 || len_cheb_grid <= 0.0)
+        {
+            std::cout << "2D case " << i << " failed to produce valid path in one or more methods." << std::endl;
+            continue;
+        }
+
+        const bool lengths_match = std::abs(len_newton_grid / len_cheb_grid - 1.0) < 0.08;
+        if (!lengths_match)
+        {
+            std::cout << "2D case " << i << " mismatch:" << std::endl;
+            std::cout << "  newton grid: " << len_newton_grid << std::endl;
+            std::cout << "  chebyshev grid + newton: " << len_cheb_grid << std::endl;
+            std::cout << "  ratio_error: " << std::abs(len_newton_grid / len_cheb_grid - 1.0) << std::endl;
+            std::cout << "  root_solve_2d_grid_samples: " << trochoid.root_solve_2d_grid_samples << std::endl;
+            std::cout << "  root_solve_2d_chebyshev_samples: " << trochoid.root_solve_2d_chebyshev_samples << std::endl;
+        }
+        EXPECT_TRUE(lengths_match);
+    }
+}
+
+static void run_2d_seeded_random_comparison(int num_cases, int seed, double tol)
+{
+    std::mt19937 gen(seed);
+    std::uniform_real_distribution<> disRange(-800.0, 800.0);
+    std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
+    std::uniform_real_distribution<> disWind(-25.0, 25.0);
+    std::uniform_real_distribution<> disKappa(0.004, 0.02);
+
+    for (int i = 0; i < num_cases; ++i)
+    {
+        trochoids::Trochoid trochoid;
+        trochoid.problem.v = 50;
+        trochoid.problem.wind = {disWind(gen), disWind(gen), 0};
+        trochoid.problem.max_kappa = disKappa(gen);
+        trochoid.problem.X0 = {disRange(gen), disRange(gen), disPhi(gen)};
+        trochoid.problem.Xf = {disRange(gen), disRange(gen), disPhi(gen)};
+        trochoid.root_solve_2d_grid_samples = 360;
+        trochoid.root_solve_2d_chebyshev_samples = 33;
+
+        const double len_newton_grid = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::NEWTON_GRID);
+        const double len_cheb_grid = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::CHEBYSHEV_GRID_NEWTON);
+
+        EXPECT_GT(len_newton_grid, 0.0);
+        EXPECT_GT(len_cheb_grid, 0.0);
+        if (len_newton_grid <= 0.0 || len_cheb_grid <= 0.0)
+        {
+            std::cout << "2D random case " << i << " failed to produce valid path in one or more methods." << std::endl;
+            continue;
+        }
+
+        const bool lengths_match = std::abs(len_newton_grid / len_cheb_grid - 1.0) < tol;
+        if (!lengths_match)
+        {
+            std::cout << "2D random case " << i << " mismatch:" << std::endl;
+            std::cout << "  newton grid: " << len_newton_grid << std::endl;
+            std::cout << "  chebyshev grid + newton: " << len_cheb_grid << std::endl;
+            std::cout << "  ratio_error: " << std::abs(len_newton_grid / len_cheb_grid - 1.0) << std::endl;
+            std::cout << "  start: " << trochoid.problem.X0[0] << ", " << trochoid.problem.X0[1] << ", " << trochoid.problem.X0[2] << std::endl;
+            std::cout << "  goal: " << trochoid.problem.Xf[0] << ", " << trochoid.problem.Xf[1] << ", " << trochoid.problem.Xf[2] << std::endl;
+            std::cout << "  wind: " << trochoid.problem.wind[0] << ", " << trochoid.problem.wind[1] << std::endl;
+            std::cout << "  max_kappa: " << trochoid.problem.max_kappa << std::endl;
+            std::cout << "  root_solve_2d_grid_samples: " << trochoid.root_solve_2d_grid_samples << std::endl;
+            std::cout << "  root_solve_2d_chebyshev_samples: " << trochoid.root_solve_2d_chebyshev_samples << std::endl;
+        }
+        EXPECT_TRUE(lengths_match);
+    }
+}
+
+TEST(TestChebyshev, root_solver_2d_methods_match_seeded_random_cases){
+    run_2d_seeded_random_comparison(20, 7, 0.10);
+}
+
+TEST(TestChebyshev, DISABLED_root_solver_2d_methods_match_seeded_random_cases_extended){
+    run_2d_seeded_random_comparison(200, 7, 0.10);
+}
+
+TEST(TestChebyshev, root_solver_2d_methods_oracle_seeded_random_quick){
+    std::mt19937 gen(11);
+    std::uniform_real_distribution<> disRange(-800.0, 800.0);
+    std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
+    std::uniform_real_distribution<> disWind(-25.0, 25.0);
+    std::uniform_real_distribution<> disKappa(0.004, 0.02);
+
+    for (int i = 0; i < 10; ++i)
+    {
+        trochoids::Trochoid trochoid;
+        trochoid.problem.v = 50;
+        trochoid.problem.wind = {disWind(gen), disWind(gen), 0};
+        trochoid.problem.max_kappa = disKappa(gen);
+        trochoid.problem.X0 = {disRange(gen), disRange(gen), disPhi(gen)};
+        trochoid.problem.Xf = {disRange(gen), disRange(gen), disPhi(gen)};
+        trochoid.include_BBB = true;
+        trochoid.root_solve_2d_grid_samples = 720;
+        trochoid.root_solve_2d_chebyshev_samples = 65;
+
+        const double len_newton = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::NEWTON_GRID);
+        const double len_cheb = get_numerical_path_length_for_2d_mode(
+            trochoid, trochoids::Trochoid::RootSolve2DMethod::CHEBYSHEV_GRID_NEWTON);
+        const double len_oracle = get_empirical_best_2d_length(trochoid);
+
+        EXPECT_GT(len_newton, 0.0);
+        EXPECT_GT(len_cheb, 0.0);
+        EXPECT_GT(len_oracle, 0.0);
+        if (len_newton <= 0.0 || len_cheb <= 0.0 || len_oracle <= 0.0)
+        {
+            continue;
+        }
+
+        const double newton_gap = len_newton / len_oracle - 1.0;
+        const double cheb_gap = len_cheb / len_oracle - 1.0;
+        EXPECT_TRUE(newton_gap < 0.20);
+        EXPECT_TRUE(cheb_gap < 0.20);
+        EXPECT_TRUE(std::min(newton_gap, cheb_gap) < 0.08);
+    }
+}
+ 

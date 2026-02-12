@@ -445,6 +445,122 @@ static void BM_GetTrochoid_with_classification(benchmark::State& state) {
 }
 BENCHMARK(BM_GetTrochoid_with_classification);
 
+static trochoids::Trochoid make_root_solver_benchmark_trochoid()
+{
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = 50;
+    trochoid.problem.wind = {19.8186, 34.7972, 0};
+    trochoid.problem.max_kappa = 0.0153616;
+    trochoid.problem.X0 = {-959.848, 527.061, 1.31217};
+    trochoid.problem.Xf = {-811.3, 670.211, 3.86527};
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = false;
+    trochoid.include_BBB = false;
+    return trochoid;
+}
+
+static trochoids::Trochoid make_root_solver_2d_benchmark_trochoid()
+{
+    trochoids::Trochoid trochoid;
+    trochoid.problem.v = 50;
+    trochoid.problem.wind = {12.0, -18.0, 0};
+    trochoid.problem.max_kappa = 0.008;
+    trochoid.problem.X0 = {-200.0, 300.0, 1.1};
+    trochoid.problem.Xf = {450.0, -250.0, 4.2};
+    trochoid.use_dubins_if_low_wind = true;
+    trochoid.use_trochoid_classification = true;
+    trochoid.use_Chebyshev = true;
+    trochoid.include_BBB = true;
+    trochoid.root_solve_2d_grid_samples = 360;
+    trochoid.root_solve_2d_chebyshev_samples = 33;
+    return trochoid;
+}
+
+static void BM_RootSolve1D_NewtonRaphson(benchmark::State& state) {
+    trochoids::Trochoid trochoid = make_root_solver_benchmark_trochoid();
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::NEWTON_RAPHSON;
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(trochoid.getTrochoidNumerical());
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_RootSolve1D_NewtonRaphson);
+
+static void BM_RootSolve1D_BracketedBisection(benchmark::State& state) {
+    trochoids::Trochoid trochoid = make_root_solver_benchmark_trochoid();
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::BRACKETED_BISECTION;
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(trochoid.getTrochoidNumerical());
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_RootSolve1D_BracketedBisection);
+
+static void BM_RootSolve1D_NonRobustBrent(benchmark::State& state) {
+    trochoids::Trochoid trochoid = make_root_solver_benchmark_trochoid();
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::NON_ROBUST_BRENT;
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(trochoid.getTrochoidNumerical());
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_RootSolve1D_NonRobustBrent);
+
+static void BM_RootSolve1D_GlobalBrent(benchmark::State& state) {
+    trochoids::Trochoid trochoid = make_root_solver_benchmark_trochoid();
+    trochoid.root_solve_1d_method = trochoids::Trochoid::RootSolve1DMethod::GLOBAL_BRENT;
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(trochoid.getTrochoidNumerical());
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_RootSolve1D_GlobalBrent);
+
+static void BM_RootSolve1D_Chebyshev(benchmark::State& state) {
+    trochoids::Trochoid trochoid = make_root_solver_benchmark_trochoid();
+    trochoid.use_Chebyshev = true;
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(trochoid.getTrochoidNumerical());
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_RootSolve1D_Chebyshev);
+
+static void BM_RootSolve2D_NewtonGrid(benchmark::State& state) {
+    trochoids::Trochoid trochoid = make_root_solver_2d_benchmark_trochoid();
+    trochoid.root_solve_2d_method = trochoids::Trochoid::RootSolve2DMethod::NEWTON_GRID;
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(trochoid.getTrochoidNumerical());
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_RootSolve2D_NewtonGrid);
+
+static void BM_RootSolve2D_ChebyshevGridNewton(benchmark::State& state) {
+    trochoids::Trochoid trochoid = make_root_solver_2d_benchmark_trochoid();
+    trochoid.root_solve_2d_method = trochoids::Trochoid::RootSolve2DMethod::CHEBYSHEV_GRID_NEWTON;
+
+    for (auto _ : state)
+    {
+        benchmark::DoNotOptimize(trochoid.getTrochoidNumerical());
+        benchmark::ClobberMemory();
+    }
+}
+BENCHMARK(BM_RootSolve2D_ChebyshevGridNewton);
+
 static void BM_Dubins_Random_Exhaustive(benchmark::State& state) {
     std::random_device rd;
     std::mt19937 gen = std::mt19937(rd());

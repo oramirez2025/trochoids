@@ -37,7 +37,7 @@
 #ifndef TROCHOIDS_TROCHOIDS_H
 #define TROCHOIDS_TROCHOIDS_H
 
-#define EPSILON 1e-5
+#define EPSILON 1e-7
 #include <math.h>
 #include <vector>
 #include <tuple>
@@ -60,6 +60,20 @@ class Trochoid
     double waypoint_distance = 0;
 
 public:
+    enum class RootSolve1DMethod
+    {
+        NEWTON_RAPHSON,
+        BRACKETED_BISECTION,
+        NON_ROBUST_BRENT,
+        GLOBAL_BRENT
+    };
+
+    enum class RootSolve2DMethod
+    {
+        NEWTON_GRID,
+        CHEBYSHEV_GRID_NEWTON
+    };
+
     struct Problem
     {
         std::vector<double> X0;  // x, y, psi
@@ -73,8 +87,12 @@ public:
     // Optimization options
     bool use_trochoid_classification = true;
     bool use_Chebyshev = true;
+    RootSolve1DMethod root_solve_1d_method = RootSolve1DMethod::GLOBAL_BRENT;
+    RootSolve2DMethod root_solve_2d_method = RootSolve2DMethod::NEWTON_GRID;
     bool include_BBB = false; // TODO: should this be default true?
     bool use_dubins_if_low_wind = true;
+    int root_solve_2d_grid_samples = 360;
+    int root_solve_2d_chebyshev_samples = 33;
 
     Trochoid() {}
 
@@ -101,6 +119,24 @@ private:
     double derivfunc(double t, double k);
 
     double newtonRaphson(double x, double k, int idx_max = 100);
+
+    std::vector<double> find_roots_1d_newton(double k, double t_min, double t_max, double step_size);
+
+    std::vector<double> find_roots_1d_bracketed(double k, double t_min, double t_max, int num_intervals = 720, int idx_max = 100);
+
+    std::vector<double> find_roots_1d_non_robust_brent(double k, double t_min, double t_max, int num_intervals = 720, int idx_max = 100);
+
+    std::vector<double> find_roots_1d_global_brent(double k, double t_min, double t_max, int num_intervals = 1440, int idx_max = 100);
+
+    double bisection_root(double k, double left, double right, int idx_max = 100);
+
+    double brent_root(double k, double left, double right, int idx_max = 100);
+
+    double bisection_derivative_root(double k, double left, double right, int idx_max = 100);
+
+    std::vector<double> chebyshev_nodes(double a, double b, int samples);
+
+    std::vector<std::pair<double, double>> find_2d_seeds_chebyshev_grid(double t_min, double t_max, int samples);
 
     std::pair<double, double> newtonRaphson2D(double t1, double t2, int idx_max);
 

@@ -37,6 +37,8 @@
 
 #include "trochoids/trochoids.h"
 #include "trochoids/ChebTools.h"
+#include <cmath>
+#include <limits>
 
 int find_quadrant(double angle)
 {
@@ -754,7 +756,6 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
     Path temp_path;
     for (double k = -3; k < 3; k++)
     {
-        double t = 0;
         double t_2pi = (2 * M_PI / w);
 
         std::vector<double> t1;
@@ -771,15 +772,21 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
         }
         else
         {
-            // Newton Raphson Method
-            while (t < 2 * t_2pi)
+            if (this->root_solve_1d_method == RootSolve1DMethod::NEWTON_RAPHSON)
             {
-                double t1_ = newtonRaphson(t, k);
-                t += step_size;
-                if (t1_ >= 0.0 && t1_ < 2 * t_2pi && abs(func(t1_, k)) < EPSILON)  // Changed from 0.1
-                {
-                    t1.push_back(t1_);
-                }
+                t1 = find_roots_1d_newton(k, 0.0, 2 * t_2pi, step_size);
+            }
+            else if (this->root_solve_1d_method == RootSolve1DMethod::BRACKETED_BISECTION)
+            {
+                t1 = find_roots_1d_bracketed(k, 0.0, 2 * t_2pi);
+            }
+            else if (this->root_solve_1d_method == RootSolve1DMethod::NON_ROBUST_BRENT)
+            {
+                t1 = find_roots_1d_non_robust_brent(k, 0.0, 2 * t_2pi);
+            }
+            else
+            {
+                t1 = find_roots_1d_global_brent(k, 0.0, 2 * t_2pi);
             }
             std::sort(t1.begin(), t1.end());
             last = std::unique(t1.begin(), t1.end(), [](double l, double r)
@@ -833,24 +840,53 @@ void trochoids::Trochoid::BBB_solve(double &del1, double &del2,
                                     double &best_time, Path &final_path)
 {
     double t_2pi = (2 * M_PI / w);
+    if (this->root_solve_2d_grid_samples > 0)
+    {
+        step_size = (2 * t_2pi) / static_cast<double>(this->root_solve_2d_grid_samples);
+    }
     std::pair<double,double> best  = std::make_pair(std::numeric_limits<double>::infinity(),std::numeric_limits<double>::infinity());
-    for (double t_a = 0; t_a < 2 * t_2pi; t_a = t_a + step_size) {
-        for (double T = 0; T <= 2 * t_2pi; T = T + step_size) {
-            std::pair<double,double> t = newtonRaphson2D(t_a,T,1000); // Note: t.first = t_a' and t.second = T', where t_a' and T' are possible roots
-            double diff = problem.Xf[2] - problem.X0[2];
-            if (del2 == -1 && diff > 0) {
-                diff -= M_2PI;
-            } else if (del2 == 1 && diff < 0) {
-                diff += M_2PI;
+    std::vector<std::pair<double, double>> seeds;
+    if (this->root_solve_2d_method == RootSolve2DMethod::NEWTON_GRID)
+    {
+        for (double t_a = 0; t_a < 2 * t_2pi; t_a = t_a + step_size)
+        {
+            for (double T = 0; T <= 2 * t_2pi; T = T + step_size)
+            {
+                seeds.emplace_back(t_a, T);
             }
-            double t_b = t.first + t.second/2 + (diff)/(2 * del2 * w); // t.first = t_a and t.second = T
-            std::pair<double,double> val = func2D(t);
-            bool in_bounds = (0 <= t.first && t.first < 2 * t_2pi && t.first < t_b &&
-                0 <= t.second && t.second <= 2 * t_2pi && t_b < t.second);
-            if (in_bounds && abs(val.first) <= EPSILON && abs(val.second) <= EPSILON && t.second < best.second) {
-                    best = t;
-                }
         }
+    }
+    else
+    {
+        seeds = find_2d_seeds_chebyshev_grid(0.0, 2 * t_2pi, this->root_solve_2d_chebyshev_samples);
+        if (seeds.empty())
+        {
+            for (double t_a = 0; t_a < 2 * t_2pi; t_a = t_a + step_size)
+            {
+                for (double T = 0; T <= 2 * t_2pi; T = T + step_size)
+                {
+                    seeds.emplace_back(t_a, T);
+                }
+            }
+        }
+    }
+
+    for (const auto &seed : seeds)
+    {
+        std::pair<double,double> t = newtonRaphson2D(seed.first, seed.second, 1000); // Note: t.first = t_a' and t.second = T', where t_a' and T' are possible roots
+        double diff = problem.Xf[2] - problem.X0[2];
+        if (del2 == -1 && diff > 0) {
+            diff -= M_2PI;
+        } else if (del2 == 1 && diff < 0) {
+            diff += M_2PI;
+        }
+        double t_b = t.first + t.second/2 + (diff)/(2 * del2 * w); // t.first = t_a and t.second = T
+        std::pair<double,double> val = func2D(t);
+        bool in_bounds = (0 <= t.first && t.first < 2 * t_2pi && t.first < t_b &&
+            0 <= t.second && t.second <= 2 * t_2pi && t_b < t.second);
+        if (in_bounds && abs(val.first) <= EPSILON && abs(val.second) <= EPSILON && t.second < best.second) {
+                best = t;
+            }
     }
 
     // if we found a better time than the best time
@@ -1071,11 +1107,21 @@ double trochoids::Trochoid::derivfunc(double t, double k)
 
 double trochoids::Trochoid::newtonRaphson(double x, double k, int idx_max)
 {
-    double h = func(x, k) / derivfunc(x, k);  // Line search
+    double d = derivfunc(x, k);
+    if (abs(d) < EPSILON)
+    {
+        return x;
+    }
+    double h = func(x, k) / d;  // Line search
     int iter = 0;
     while (abs(h) >= EPSILON)
     {
-        h = func(x, k)/derivfunc(x, k);
+        d = derivfunc(x, k);
+        if (abs(d) < EPSILON)
+        {
+            break;
+        }
+        h = func(x, k)/d;
 
         iter++;
         if (iter > idx_max)
@@ -1086,6 +1132,496 @@ double trochoids::Trochoid::newtonRaphson(double x, double k, int idx_max)
     }
     return x;
 }
+
+std::vector<double> trochoids::Trochoid::find_roots_1d_newton(double k, double t_min, double t_max, double step_size)
+{
+    std::vector<double> roots;
+    for (double t = t_min; t < t_max; t += step_size)
+    {
+        double root = newtonRaphson(t, k);
+        if (root >= t_min && root < t_max && abs(func(root, k)) < EPSILON)
+        {
+            roots.push_back(root);
+        }
+    }
+    return roots;
+}
+
+double trochoids::Trochoid::bisection_root(double k, double left, double right, int idx_max)
+{
+    double f_left = func(left, k);
+    double f_right = func(right, k);
+
+    if (abs(f_left) < EPSILON)
+    {
+        return left;
+    }
+    if (abs(f_right) < EPSILON)
+    {
+        return right;
+    }
+
+    if (f_left * f_right > 0.0)
+    {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    double mid = 0.5 * (left + right);
+    for (int iter = 0; iter < idx_max; ++iter)
+    {
+        mid = 0.5 * (left + right);
+        double f_mid = func(mid, k);
+        if (abs(f_mid) < EPSILON || abs(right - left) < EPSILON)
+        {
+            break;
+        }
+
+        if (f_left * f_mid <= 0.0)
+        {
+            right = mid;
+        }
+        else
+        {
+            left = mid;
+            f_left = f_mid;
+        }
+    }
+    return mid;
+}
+
+double trochoids::Trochoid::brent_root(double k, double left, double right, int idx_max)
+{
+    double a = left;
+    double b = right;
+    double fa = func(a, k);
+    double fb = func(b, k);
+
+    if (std::abs(fa) < EPSILON)
+    {
+        return a;
+    }
+    if (std::abs(fb) < EPSILON)
+    {
+        return b;
+    }
+    if (fa * fb > 0.0)
+    {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    double c = a;
+    double fc = fa;
+    double d = b - a;
+    double e = d;
+
+    for (int iter = 0; iter < idx_max; ++iter)
+    {
+        if (fb * fc > 0.0)
+        {
+            c = a;
+            fc = fa;
+            d = b - a;
+            e = d;
+        }
+
+        if (std::abs(fc) < std::abs(fb))
+        {
+            const double a_old = a;
+            const double fa_old = fa;
+            a = b;
+            fa = fb;
+            b = c;
+            fb = fc;
+            c = a_old;
+            fc = fa_old;
+        }
+
+        const double tol = 2.0 * std::numeric_limits<double>::epsilon() * std::abs(b) + EPSILON;
+        const double m = 0.5 * (c - b);
+        if (std::abs(m) <= tol || std::abs(fb) < EPSILON)
+        {
+            return b;
+        }
+
+        if (std::abs(e) >= tol && std::abs(fa) > std::abs(fb))
+        {
+            double s = fb / fa;
+            double p = 0.0;
+            double q = 1.0;
+            if (a == c)
+            {
+                p = 2.0 * m * s;
+                q = 1.0 - s;
+            }
+            else
+            {
+                const double q1 = fa / fc;
+                const double r = fb / fc;
+                p = s * (2.0 * m * q1 * (q1 - r) - (b - a) * (r - 1.0));
+                q = (q1 - 1.0) * (r - 1.0) * (s - 1.0);
+            }
+
+            if (p > 0.0)
+            {
+                q = -q;
+            }
+            else
+            {
+                p = -p;
+            }
+
+            if (2.0 * p < std::min(3.0 * m * q - std::abs(tol * q), std::abs(e * q)))
+            {
+                e = d;
+                d = p / q;
+            }
+            else
+            {
+                d = m;
+                e = m;
+            }
+        }
+        else
+        {
+            d = m;
+            e = m;
+        }
+
+        a = b;
+        fa = fb;
+        if (std::abs(d) > tol)
+        {
+            b += d;
+        }
+        else
+        {
+            b += (m > 0.0 ? tol : -tol);
+        }
+        fb = func(b, k);
+    }
+    return b;
+}
+
+double trochoids::Trochoid::bisection_derivative_root(double k, double left, double right, int idx_max)
+{
+    double d_left = derivfunc(left, k);
+    double d_right = derivfunc(right, k);
+
+    if (std::abs(d_left) < EPSILON)
+    {
+        return left;
+    }
+    if (std::abs(d_right) < EPSILON)
+    {
+        return right;
+    }
+    if (d_left * d_right > 0.0)
+    {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    double mid = 0.5 * (left + right);
+    for (int iter = 0; iter < idx_max; ++iter)
+    {
+        mid = 0.5 * (left + right);
+        const double d_mid = derivfunc(mid, k);
+        if (std::abs(d_mid) < EPSILON || std::abs(right - left) < EPSILON)
+        {
+            break;
+        }
+
+        if (d_left * d_mid <= 0.0)
+        {
+            right = mid;
+        }
+        else
+        {
+            left = mid;
+            d_left = d_mid;
+        }
+    }
+    return mid;
+}
+
+std::vector<double> trochoids::Trochoid::chebyshev_nodes(double a, double b, int samples)
+{
+    std::vector<double> nodes;
+    if (samples <= 0)
+    {
+        return nodes;
+    }
+    nodes.reserve(samples);
+    for (int i = 0; i < samples; ++i)
+    {
+        const double theta = M_PI * (2.0 * i + 1.0) / (2.0 * samples);
+        const double x = std::cos(theta);
+        nodes.push_back(0.5 * (a + b) + 0.5 * (b - a) * x);
+    }
+    std::sort(nodes.begin(), nodes.end());
+    return nodes;
+}
+
+std::vector<std::pair<double, double>> trochoids::Trochoid::find_2d_seeds_chebyshev_grid(double t_min, double t_max, int samples)
+{
+    std::vector<std::pair<double, double>> seeds;
+    if (samples < 3 || t_max <= t_min)
+    {
+        return seeds;
+    }
+
+    const std::vector<double> ta_nodes = chebyshev_nodes(t_min, t_max, samples);
+    const std::vector<double> T_nodes = chebyshev_nodes(t_min, t_max, samples);
+
+    std::vector<std::vector<std::pair<double, double>>> values(
+        samples, std::vector<std::pair<double, double>>(samples));
+
+    std::vector<std::tuple<double, double, double>> residual_points;
+    residual_points.reserve(samples * samples);
+
+    for (int i = 0; i < samples; ++i)
+    {
+        for (int j = 0; j < samples; ++j)
+        {
+            values[i][j] = func2D(std::make_pair(ta_nodes[i], T_nodes[j]));
+            const double residual = values[i][j].first * values[i][j].first + values[i][j].second * values[i][j].second;
+            residual_points.emplace_back(residual, ta_nodes[i], T_nodes[j]);
+        }
+    }
+
+    auto add_seed = [&seeds](double ta, double T)
+    {
+        for (const auto &seed : seeds)
+        {
+            if (std::abs(seed.first - ta) < EPSILON && std::abs(seed.second - T) < EPSILON)
+            {
+                return;
+            }
+        }
+        seeds.emplace_back(ta, T);
+    };
+
+    for (int i = 0; i < samples - 1; ++i)
+    {
+        for (int j = 0; j < samples - 1; ++j)
+        {
+            const auto &c00 = values[i][j];
+            const auto &c10 = values[i + 1][j];
+            const auto &c01 = values[i][j + 1];
+            const auto &c11 = values[i + 1][j + 1];
+
+            const double min_f1 = std::min(std::min(c00.first, c10.first), std::min(c01.first, c11.first));
+            const double max_f1 = std::max(std::max(c00.first, c10.first), std::max(c01.first, c11.first));
+            const double min_f2 = std::min(std::min(c00.second, c10.second), std::min(c01.second, c11.second));
+            const double max_f2 = std::max(std::max(c00.second, c10.second), std::max(c01.second, c11.second));
+
+            const bool f1_zero_in_cell = (min_f1 <= 0.0 && 0.0 <= max_f1);
+            const bool f2_zero_in_cell = (min_f2 <= 0.0 && 0.0 <= max_f2);
+
+            if (f1_zero_in_cell && f2_zero_in_cell)
+            {
+                const double ta_center = 0.5 * (ta_nodes[i] + ta_nodes[i + 1]);
+                const double T_center = 0.5 * (T_nodes[j] + T_nodes[j + 1]);
+                add_seed(ta_center, T_center);
+            }
+        }
+    }
+
+    std::sort(residual_points.begin(), residual_points.end(),
+              [](const std::tuple<double, double, double> &a,
+                 const std::tuple<double, double, double> &b)
+              {
+                  return std::get<0>(a) < std::get<0>(b);
+              });
+
+    // Seed Newton from several low-residual candidates to avoid getting stuck
+    // in a single local basin when one candidate is misleading.
+    const int top_k = std::min(static_cast<int>(residual_points.size()), std::max(8, samples / 2));
+    for (int i = 0; i < top_k; ++i)
+    {
+        add_seed(std::get<1>(residual_points[i]), std::get<2>(residual_points[i]));
+    }
+
+    return seeds;
+}
+
+std::vector<double> trochoids::Trochoid::find_roots_1d_global_brent(double k, double t_min, double t_max, int num_intervals, int idx_max)
+{
+    std::vector<double> roots;
+    if (num_intervals <= 0 || t_max <= t_min)
+    {
+        return roots;
+    }
+
+    const double step = (t_max - t_min) / static_cast<double>(num_intervals);
+    const double tangent_tol = 50.0 * EPSILON;
+
+    auto add_root = [&roots, t_min, t_max](double root)
+    {
+        if (std::isnan(root) || root < t_min || root > t_max)
+        {
+            return;
+        }
+        for (const double existing : roots)
+        {
+            if (std::abs(existing - root) < EPSILON)
+            {
+                return;
+            }
+        }
+        roots.push_back(root);
+    };
+
+    double left = t_min;
+    double f_left = func(left, k);
+    if (std::abs(f_left) < EPSILON)
+    {
+        add_root(left);
+    }
+
+    for (int i = 1; i <= num_intervals; ++i)
+    {
+        const double right = (i == num_intervals) ? t_max : t_min + i * step;
+        const double f_right = func(right, k);
+
+        if (std::abs(f_right) < EPSILON)
+        {
+            add_root(right);
+        }
+        if (f_left * f_right < 0.0)
+        {
+            add_root(brent_root(k, left, right, idx_max));
+        }
+
+        left = right;
+        f_left = f_right;
+    }
+
+    left = t_min;
+    double d_left = derivfunc(left, k);
+    for (int i = 1; i <= num_intervals; ++i)
+    {
+        const double right = (i == num_intervals) ? t_max : t_min + i * step;
+        const double d_right = derivfunc(right, k);
+
+        if (d_left * d_right < 0.0)
+        {
+            const double extremum = bisection_derivative_root(k, left, right, idx_max);
+            if (!std::isnan(extremum) && std::abs(func(extremum, k)) < tangent_tol)
+            {
+                add_root(extremum);
+            }
+        }
+
+        left = right;
+        d_left = d_right;
+    }
+
+    std::sort(roots.begin(), roots.end());
+    roots.erase(std::unique(roots.begin(), roots.end(), [](double l, double r)
+                            { return std::abs(l - r) < EPSILON; }),
+                roots.end());
+    return roots;
+}
+
+std::vector<double> trochoids::Trochoid::find_roots_1d_non_robust_brent(double k, double t_min, double t_max, int num_intervals, int idx_max)
+{
+    std::vector<double> roots;
+    if (num_intervals <= 0 || t_max <= t_min)
+    {
+        return roots;
+    }
+
+    auto add_root = [&roots, t_min, t_max](double root)
+    {
+        if (std::isnan(root) || root < t_min || root > t_max)
+        {
+            return;
+        }
+        for (const double existing : roots)
+        {
+            if (std::abs(existing - root) < EPSILON)
+            {
+                return;
+            }
+        }
+        roots.push_back(root);
+    };
+
+    const double step = (t_max - t_min) / static_cast<double>(num_intervals);
+    double left = t_min;
+    double f_left = func(left, k);
+    if (std::abs(f_left) < EPSILON)
+    {
+        add_root(left);
+    }
+
+    for (int i = 1; i <= num_intervals; ++i)
+    {
+        const double right = (i == num_intervals) ? t_max : t_min + i * step;
+        const double f_right = func(right, k);
+
+        if (std::abs(f_right) < EPSILON)
+        {
+            add_root(right);
+        }
+        if (f_left * f_right < 0.0)
+        {
+            add_root(brent_root(k, left, right, idx_max));
+        }
+
+        left = right;
+        f_left = f_right;
+    }
+
+    std::sort(roots.begin(), roots.end());
+    roots.erase(std::unique(roots.begin(), roots.end(), [](double l, double r)
+                            { return std::abs(l - r) < EPSILON; }),
+                roots.end());
+    return roots;
+}
+
+std::vector<double> trochoids::Trochoid::find_roots_1d_bracketed(double k, double t_min, double t_max, int num_intervals, int idx_max)
+{
+    std::vector<double> roots;
+    if (num_intervals <= 0 || t_max <= t_min)
+    {
+        return roots;
+    }
+
+    const double step = (t_max - t_min) / static_cast<double>(num_intervals);
+    double left = t_min;
+    double f_left = func(left, k);
+
+    if (abs(f_left) < EPSILON)
+    {
+        roots.push_back(left);
+    }
+
+    for (int i = 1; i <= num_intervals; ++i)
+    {
+        double right = (i == num_intervals) ? t_max : t_min + i * step;
+        double f_right = func(right, k);
+
+        if (abs(f_right) < EPSILON)
+        {
+            roots.push_back(right);
+        }
+
+        if (f_left * f_right < 0.0)
+        {
+            double root = bisection_root(k, left, right, idx_max);
+            if (!std::isnan(root))
+            {
+                roots.push_back(root);
+            }
+        }
+
+        left = right;
+        f_left = f_right;
+    }
+    return roots;
+}
+
 std::pair<double,double> trochoids::Trochoid::findh(double t_a, double T) {
     double inside1 = del1 * w * t_a + phi1;
     double inside2 = del2 * w * T/2.0 + problem.Xf[2]/2.0 + del1 * w * t_a + phi1/2.0;
