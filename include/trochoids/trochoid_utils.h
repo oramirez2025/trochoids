@@ -39,6 +39,7 @@
 #define TROCHOIDS_TROCHOID_UTILS_H
 
 #include "trochoids/trochoids.h"
+#include <limits>
 
 #define M_2PI 2.0*M_PI
 
@@ -50,6 +51,37 @@ struct XYZPsiState
     double y;
     double z;
     double psi;
+};
+
+enum class VerticalPlanningCase
+{
+    NONE = 0,
+    DIRECT_PROFILE = 1,
+    FULL_LOOP_EXTENSION = 2,
+    PARTIAL_EXTENSION = 3  // Reserved for future case-3 support.
+};
+
+struct VerticalConstraints
+{
+    double max_climb_rate = std::numeric_limits<double>::infinity();
+    double max_descent_rate = std::numeric_limits<double>::infinity();
+    bool enforce_flight_path_angle = false;
+    double max_flight_path_angle_rad = 0.0;
+    bool allow_full_loop_extension = false;  // Enables phase-B loop extension in wind.
+    int max_full_loops = 0;
+};
+
+struct VerticalPlanInfo
+{
+    bool valid = false;
+    bool vertical_feasible = false;
+    VerticalPlanningCase case_used = VerticalPlanningCase::NONE;
+    double xy_time_sec = 0.0;
+    double required_vertical_time_sec = 0.0;
+    double added_extension_time_sec = 0.0;
+    int loops_added_start = 0;
+    int loops_added_end = 0;
+    int estimated_full_loops_needed = 0;
 };
 
 double WrapTo2Pi(double a1);
@@ -80,6 +112,20 @@ bool get_trochoid_path_numerical(const XYZPsiState &s1,
                                     double max_kappa,
                                     bool exhaustive_solve_only = false,
                                     double waypoint_distance = 0);
+
+bool get_trochoid_path_3d(const XYZPsiState &s1,
+                            const XYZPsiState &s2,
+                            std::vector<XYZPsiState> &path,
+                            const double wind[],
+                            double v,
+                            double max_kappa,
+                            const VerticalConstraints &vertical_constraints,
+                            VerticalPlanInfo *plan_info = nullptr,
+                            double waypoint_distance = 0);
+// Current support:
+// 1) DIRECT_PROFILE (case 1): if base XY time can satisfy vertical constraints.
+// 2) FULL_LOOP_EXTENSION (case 2): optional full-loop extension with wind drift.
+// PARTIAL_EXTENSION (case 3) is not implemented yet.
 }  // namespace trochoids
 
 #endif  // TROCHOIDS_TROCHOID_UTILS_H

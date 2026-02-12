@@ -97,8 +97,15 @@ if(CATKIN_ENABLE_TESTING)
     target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME} ${catkin_LIBRARIES} )
   endif()
 
+  catkin_add_gtest(${PROJECT_NAME}-3d-test test/unit_test_trochoids_3d.cpp
+                                           src/trochoids.cpp
+                                           src/trochoid_utils.cpp
+  )
+  if(TARGET ${PROJECT_NAME}-3d-test)
+    target_link_libraries(${PROJECT_NAME}-3d-test ${PROJECT_NAME} ${catkin_LIBRARIES})
+  endif()
+
   find_package(benchmark REQUIRED)
   add_executable(${PROJECT_NAME}-benchmark test/all_benchmarks.cpp)
   target_link_libraries(${PROJECT_NAME}-benchmark ${PROJECT_NAME} ${catkin_LIBRARIES} benchmark::benchmark)
 endif(CATKIN_ENABLE_TESTING)
-

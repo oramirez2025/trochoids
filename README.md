@@ -67,6 +67,29 @@ roslaunch trochoids unit_test.launch
 
 This will run all the unit tests contained in unit_test_trochoid.cpp and unit_test_trochoid_classification.cpp. Examples of code usage can be found in the unit tests or in the following section.
 
+### Visualizing 3D unit test paths
+
+The dedicated 3D test target writes CSV path outputs (`x,y,z,psi`) that you can visualize:
+
+```bash
+# choose CSV output directory
+# native/host:
+# export TROCHOIDS_3D_CSV_DIR=csv_files/3d
+#
+# docker:
+# export TROCHOIDS_3D_CSV_DIR=/ws/src/trochoids/csv_files/3d
+export TROCHOIDS_3D_CSV_DIR=/ws/src/trochoids/csv_files/3d
+
+# run only the 3D tests
+./devel/lib/trochoids/trochoids-3d-test
+
+# render XY and 3D figures from all generated CSV files
+python3 /ws/src/trochoids/test/visualize_trochoids_3d.py --csv-dir /ws/src/trochoids/csv_files/3d
+```
+
+Figures are saved to `figures/3d` by default.
+If you use `docker compose run --rm`, only mounted paths persist after the container exits.
+
 ## Usage
 
 The main function for the trochoid solver is `get_trochoid_path()`. This function takes in the following parameters:
