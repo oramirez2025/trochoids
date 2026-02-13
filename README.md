@@ -14,60 +14,111 @@ This codebase includes both a solver for trochoidal paths when there is wind as 
 Time-optimal path planning in high winds for a turning-rate constrained UAV is a challenging problem to solve and is important for deployment and field operations. Previous works have used trochoidal path segments comprising straight and maximum-rate turn segments, as optimal extremal paths in uniform wind conditions. Current methods iterate over all candidate trochoidal trajectory types and select the one that is time-optimal; however, this exhaustive search can be computationally slow. In this paper, we introduce a method to decrease the computation time. This is achieved by reducing the number of candidate trochoidal trajectory types by framing the problem in the air-relative frame and bounding the solution within a subset of candidate trajectories. Our method reduces overall computation by 37.4% compared to pre-existing methods in Bang-Straight-Bang trajectories, freeing up computation for other onboard processes and can lead to significant total computational reductions when solving many trochoidal paths. When used within the framework of a global path planner, faster state expansions help find solutions faster or compute higher-quality paths. We also release our open-source codebase as a C++ package.
 
 
+## Package Layout
+
+This repository now supports four install/use paths:
+
+* Core C++ library (pure CMake): repo root.
+* Python package (pip): built from the same core using `pybind11` and `scikit-build-core`.
+* ROS1 package (catkin, local compatibility): `ros1/trochoids_ros1`.
+* ROS2 package (ament, release target): `ros2/trochoids_ros2`.
+
 ## Prerequisites
-* Ubuntu 18.04 or 20.04
-* ROS Melodic or Noetic 
-* Python 3.6+ (For visualizations)
-* Google Benchmark (For benchmarks)
-    * `sudo apt-get install libbenchmark-dev`
-* Eigen3
-    * `sudo apt-get install libeigen3-dev`
 
-### Building and Installation
+* CMake 3.16+
+* C++17 compiler
+* Eigen3 (`sudo apt-get install libeigen3-dev`)
+* Python 3.8+ (for pip package and visualization)
+* Optional benchmark dep: `sudo apt-get install libbenchmark-dev`
 
-Clone this repo in your catkin workspace or create a new workspace like in the following:
+## Core C++ Build
 
 ```bash
-mkdir -p ~/trochoids_ws/src
-cd  ~/trochoids_ws/src
-git clone git@github.com:castacks/trochoids.git
-cd ../
-catkin build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 ```
 
-#### Docker Option
-If you would like to run the code in a docker container, you can use the provided Dockerfile. No need to setup the workspace as above. Just run the following in the repo:
+Install the C++ library:
 
 ```bash
-docker compose build
-docker compose run --rm trochoids_ws
-catkin build
+cmake --install build --prefix /usr/local
 ```
 
-
-
-### Building and Running Unit Tests
-
-To build the unit tests and run them (optional), run the following command:
+Run tests (if GTest is installed):
 
 ```bash
-catkin build --make-args tests
+cd build
+ctest --output-on-failure
 ```
 
-Source the workspace.
+## Python (pip) Build
+
+Build/install from source:
 
 ```bash
-source devel/setup.bash # devel/setup.zsh if using zsh
+python3 -m pip install .
 ```
-And then launch the unit tests with
+
+Editable install for development:
 
 ```bash
-roslaunch trochoids unit_test.launch
+python3 -m pip install -e .
 ```
 
-This will run all the unit tests contained in unit_test_trochoid.cpp and unit_test_trochoid_classification.cpp. Examples of code usage can be found in the unit tests or in the following section.
+If your environment has an older pip/PEP660 setup (for example some base Docker images), use:
 
-### Visualizing 3D unit test paths
+```bash
+python3 -m pip install .
+```
+
+Python API exposes:
+* `XYZPsiState`
+* `VerticalConstraints`
+* `VerticalPlanInfo`
+* `VerticalPlanningCase`
+* `get_trochoid_path(...)`
+* `get_trochoid_path_numerical(...)`
+* `get_trochoid_path_3d(...)`
+
+## ROS1 (catkin)
+
+ROS1 package is in `ros1/trochoids_ros1`.
+
+```bash
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src
+git clone <repo-url>
+cd ..
+catkin build trochoids_ros1
+```
+
+## ROS2 (ament/colcon)
+
+ROS2 package is in `ros2/trochoids_ros2`.
+
+Primary recommendation: rely on CI for ROS2 build validation and packaging checks.  
+Local ROS2 builds are optional and mainly useful for debugging.
+
+```bash
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws/src
+git clone <repo-url>
+cd ..
+colcon build --packages-select trochoids_ros2
+```
+
+## ROS apt Distribution Notes
+
+Official ROS apt release target for this repo is ROS2 only:
+
+* Release `ros2/trochoids_ros2` into ROS2 rosdistro tracks (for example `humble`).
+* Keep `ros1/trochoids_ros1` for local compatibility/development builds only.
+
+This repository is structured so ROS2 release workflows are independent from the core C++/pip workflows.
+The `build-all-targets` GitHub Action already validates ROS1 and ROS2 package builds on every PR/push.
+See `RELEASING_ROS.md` for the ROS2 release checklist.
+
+### Visualizing 3D test paths
 
 The dedicated 3D test target writes CSV path outputs (`x,y,z,psi`) that you can visualize:
 
@@ -81,7 +132,7 @@ The dedicated 3D test target writes CSV path outputs (`x,y,z,psi`) that you can 
 export TROCHOIDS_3D_CSV_DIR=/ws/src/trochoids/csv_files/3d
 
 # run only the 3D tests
-./devel/lib/trochoids/trochoids-3d-test
+./build/trochoids-3d-test
 
 # render XY and 3D figures from all generated CSV files
 python3 /ws/src/trochoids/test/visualize_trochoids_3d.py --csv-dir /ws/src/trochoids/csv_files/3d
@@ -116,6 +167,32 @@ trochoids::XYZPsiState goal_state = {500, 0, 110, 0};
 
 std::vector<trochoids::XYZPsiState> trochoid_path;
 bool valid = trochoids::get_trochoid_path(start_state, goal_state, trochoid_path, wind, desired_speed, max_kappa, waypoint_distance);
+```
+
+### Simple Python Example
+```python
+import trochoids
+
+start = trochoids.XYZPsiState()
+start.x, start.y, start.z, start.psi = 0.0, 0.0, 110.0, 0.0
+
+goal = trochoids.XYZPsiState()
+goal.x, goal.y, goal.z, goal.psi = 500.0, 0.0, 110.0, 0.0
+
+wind = [0.3, 0.5, 0.0]
+desired_speed = 15.0
+max_kappa = 0.02
+waypoint_distance = 10.0
+
+valid, path = trochoids.get_trochoid_path(
+    start, goal, wind, desired_speed, max_kappa, waypoint_distance
+)
+
+print("valid:", valid)
+print("num waypoints:", len(path))
+if valid and path:
+    print("first waypoint:", path[0].x, path[0].y, path[0].z, path[0].psi)
+    print("last waypoint:", path[-1].x, path[-1].y, path[-1].z, path[-1].psi)
 ```
 
 

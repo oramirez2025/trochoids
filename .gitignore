@@ -18,6 +18,15 @@ browse.vc.db
 test_trochoids*
 *.m~
 build
+build_*/
+cmake-build-*/
+Testing/
+
+.venv/
+.pytest_cache/
+dist/
+*.egg-info/
+*.whl
 
 __pycache__
 *.pyc

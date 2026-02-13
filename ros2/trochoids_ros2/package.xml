@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>trochoids_ros2</name>
+  <version>0.2.0</version>
+  <description>ROS2 wrapper package for trochoids core library.</description>
+
+  <maintainer email="bradym@andrew.cmu.edu">Brady Moon</maintainer>
+  <license>Clear BSD License</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <build_depend>eigen3_cmake_module</build_depend>
+  <build_depend>eigen</build_depend>
+  <build_export_depend>eigen3_cmake_module</build_export_depend>
+  <build_export_depend>eigen</build_export_depend>
+  <exec_depend>eigen3_cmake_module</exec_depend>
+  <exec_depend>eigen</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

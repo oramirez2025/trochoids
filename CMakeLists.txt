@@ -1,111 +1,99 @@
-cmake_minimum_required(VERSION 3.0.2)
-project(trochoids)
+cmake_minimum_required(VERSION 3.16)
+project(trochoids VERSION 0.2.0 LANGUAGES CXX)
 
-## Compile as C++17
-add_compile_options(-std=c++17)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-
-## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS)
-
-# eigen
-find_package(Eigen3 REQUIRED)
-include_directories(${Eigen_INCLUDE_DIRS})
-
-# set the default build type
-if (NOT CMAKE_BUILD_TYPE)
-    # By default, use Release mode
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Type of build" FORCE)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Type of build" FORCE)
 endif()
 
-###################################
-## catkin specific configuration ##
-###################################
+option(TROCHOIDS_BUILD_TESTS "Build unit tests" ON)
+option(TROCHOIDS_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(TROCHOIDS_BUILD_PYTHON "Build Python module" OFF)
 
-catkin_package(
- INCLUDE_DIRS include
- LIBRARIES ${PROJECT_NAME}
-)
+find_package(Eigen3 REQUIRED)
 
-###########
-## Build ##
-###########
-
-## Your package locations should be listed before other locations
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-  include
-)
-
-
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/externals/eigen3")
-
-
-add_library(${PROJECT_NAME}
+add_library(trochoids_core
   src/trochoids.cpp
   src/trochoid_utils.cpp
   src/DubinsStateSpace.cpp
   src/ChebTools.cpp
 )
+add_library(trochoids::core ALIAS trochoids_core)
 
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
+target_compile_features(trochoids_core PUBLIC cxx_std_17)
+set_target_properties(trochoids_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_options(trochoids_core PRIVATE
+  $<$<CONFIG:Release>:-O3>
+)
+target_link_libraries(trochoids_core PUBLIC Eigen3::Eigen)
+target_include_directories(trochoids_core
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
-#############
-## Install ##
-#############
+include(GNUInstallDirs)
+install(TARGETS trochoids_core
+  EXPORT trochoidsTargets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(DIRECTORY include/trochoids DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-## Mark libraries for installation
-install(TARGETS ${PROJECT_NAME}
-ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/trochoidsConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion
+)
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/trochoidsConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/trochoidsConfig.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/trochoids"
+)
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/trochoidsConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/trochoidsConfigVersion.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/trochoids"
+)
+install(EXPORT trochoidsTargets
+  FILE trochoidsTargets.cmake
+  NAMESPACE trochoids::
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/trochoids"
 )
 
-## Mark cpp header files for installation
- install(DIRECTORY include/${PROJECT_NAME}/
-   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-   FILES_MATCHING PATTERN "*.h"
-   PATTERN ".svn" EXCLUDE
- )
+if(TROCHOIDS_BUILD_TESTS)
+  include(CTest)
+  enable_testing()
+  if(BUILD_TESTING)
+    find_package(GTest QUIET)
+    if(GTest_FOUND)
+      add_executable(trochoids-test test/unit_test_trochoids.cpp)
+      target_link_libraries(trochoids-test PRIVATE trochoids_core GTest::gtest_main)
+      add_test(NAME trochoids-test COMMAND $<TARGET_FILE:trochoids-test>)
 
-#############
-## Testing ##
-############# 
-
-## Add gtest based cpp test target and link libraries
-if(CATKIN_ENABLE_TESTING)
-  # find_package(roslint)
-  # ## catkin build trochoids --make-args roslint
-  # set(ROSLINT_CPP_OPTS "--filter=-build/include_what_you_use, -runtime/references, -runtime/explicit")
-  # roslint_cpp(src/trochoids.cpp
-  #             src/DubinsStateSpace.cpp
-  #             src/trochoid_utils.cpp
-  #             include/trochoids/trochoids.h 
-  #             include/trochoids/DubinsStateSpace.h
-  #             include/trochoids/trochoid_utils.h)
-
-  catkin_add_gtest(${PROJECT_NAME}-test test/unit_test_trochoids.cpp
-                                        src/trochoids.cpp
-                                        src/trochoid_utils.cpp
-  )
-  if(TARGET ${PROJECT_NAME}-test)
-    target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME} ${catkin_LIBRARIES} )
+      add_executable(trochoids-3d-test test/unit_test_trochoids_3d.cpp)
+      target_link_libraries(trochoids-3d-test PRIVATE trochoids_core GTest::gtest_main)
+      add_test(NAME trochoids-3d-test COMMAND $<TARGET_FILE:trochoids-3d-test>)
+    endif()
   endif()
+endif()
 
-  catkin_add_gtest(${PROJECT_NAME}-3d-test test/unit_test_trochoids_3d.cpp
-                                           src/trochoids.cpp
-                                           src/trochoid_utils.cpp
-  )
-  if(TARGET ${PROJECT_NAME}-3d-test)
-    target_link_libraries(${PROJECT_NAME}-3d-test ${PROJECT_NAME} ${catkin_LIBRARIES})
-  endif()
-
+if(TROCHOIDS_BUILD_BENCHMARKS)
   find_package(benchmark REQUIRED)
-  add_executable(${PROJECT_NAME}-benchmark test/all_benchmarks.cpp)
-  target_link_libraries(${PROJECT_NAME}-benchmark ${PROJECT_NAME} ${catkin_LIBRARIES} benchmark::benchmark)
-endif(CATKIN_ENABLE_TESTING)
+  add_executable(trochoids-benchmark test/all_benchmarks.cpp)
+  target_link_libraries(trochoids-benchmark PRIVATE trochoids_core benchmark::benchmark)
+endif()
+
+if(TROCHOIDS_BUILD_PYTHON)
+  find_package(pybind11 CONFIG REQUIRED)
+  pybind11_add_module(_trochoids MODULE python/src/bindings.cpp)
+  target_link_libraries(_trochoids PRIVATE trochoids_core)
+  target_compile_features(_trochoids PRIVATE cxx_std_17)
+  install(TARGETS _trochoids LIBRARY DESTINATION trochoids)
+  install(FILES python/src/trochoids/__init__.py DESTINATION trochoids)
+endif()

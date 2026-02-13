@@ -1,0 +1,124 @@
+name: Build All Targets
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-all-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpp-core:
+    name: C++ Core Build + Smoke Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libeigen3-dev libgtest-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j
+
+      - name: Verify test discovery
+        run: ctest --test-dir build -N
+
+      - name: Run fast gtest subset
+        run: |
+          ./build/trochoids-test --gtest_filter=TestTrochoids.trochoid_analytical_straight:TestTrochoids.trochoid_numerical_straight_y
+          ./build/trochoids-3d-test --gtest_filter=TestTrochoids3D.constrained_vertical_profile_feasible
+
+  python-wrapper:
+    name: Python Build + Pytests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libeigen3-dev
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+
+      - name: Build and install package
+        run: python -m pip install .
+
+      - name: Run wrapper tests
+        run: pytest -q python/tests
+
+  ros1-build:
+    name: ROS1 Compatibility Build (Noetic)
+    runs-on: ubuntu-latest
+    container:
+      image: ros:noetic
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ROS1 build dependencies
+        run: |
+          apt-get update
+          apt-get install -y python3-catkin-tools cmake g++ libeigen3-dev
+
+      - name: Build ROS1 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /opt/ros/noetic/setup.bash
+          mkdir -p /tmp/ws/src
+          ln -s "${GITHUB_WORKSPACE}" /tmp/ws/src/trochoids
+          cd /tmp/ws
+          catkin init
+          catkin config --extend /opt/ros/noetic
+          catkin build trochoids_ros1 --no-status
+
+  ros2-build:
+    name: ROS2 Release-Target Build (Humble)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup ROS2
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Install ROS2 build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-colcon-common-extensions \
+            ros-humble-ament-cmake \
+            ros-humble-eigen3-cmake-module \
+            libeigen3-dev
+
+      - name: Build ROS2 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          source /opt/ros/humble/setup.bash
+          mkdir -p /tmp/ros2_ws/src
+          ln -s "${GITHUB_WORKSPACE}" /tmp/ros2_ws/src/trochoids
+          cd /tmp/ros2_ws
+          colcon build --base-paths src/trochoids/ros2 --packages-select trochoids_ros2 --event-handlers console_direct+
