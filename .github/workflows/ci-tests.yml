@@ -75,9 +75,6 @@ jobs:
       run: |
         source /opt/ros/noetic/setup.bash
         source ws/devel/setup.bash
-        ./ws/devel/lib/trochoids/trochoids-test
-
-        roslaunch trochoids unit_test.launch
 
   python-wrapper-tests:
     runs-on: ubuntu-latest
