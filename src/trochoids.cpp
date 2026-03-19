@@ -567,7 +567,6 @@ Path trochoids::Trochoid::getTrochoidNumerical(double waypoint_distance)
         dubins_solve(phi1, phi2,
                     x0, xf,
                     y0, yf, final_path);
-
         return final_path;
     }
 
@@ -762,7 +761,7 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
         if (this->use_Chebyshev)
         {
             // Cheb Method
-            auto ce = ChebTools::ChebyshevExpansion::factory(30, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
+            auto ce = ChebTools::ChebyshevExpansion::factory(100, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
             bool only_in_domain = true;
             t1 = ce.real_roots2(only_in_domain);
             std::sort(t1.begin(), t1.end());
@@ -834,8 +833,8 @@ void trochoids::Trochoid::BBB_solve(double &del1, double &del2,
 {
     double t_2pi = (2 * M_PI / w);
     std::pair<double,double> best  = std::make_pair(std::numeric_limits<double>::infinity(),std::numeric_limits<double>::infinity());
-    for (double t_a = 0; t_a < 2 * t_2pi; t_a = t_a + step_size) {
-        for (double T = 0; T <= 2 * t_2pi; T = T + step_size) {
+    for (double T = 0; T <= 2 * t_2pi; T = T + step_size) {
+        for (double t_a = 0; t_a < T; t_a = t_a + step_size) {
             std::pair<double,double> t = newtonRaphson2D(t_a,T,1000); // Note: t.first = t_a' and t.second = T', where t_a' and T' are possible roots
             double diff = problem.Xf[2] - problem.X0[2];
             if (del2 == -1 && diff > 0) {
@@ -882,6 +881,7 @@ void trochoids::Trochoid::dubins_solve(double &phi1, double &phi2,
     Dubins::DubinsStateSpace dubins_path_obj(1/problem.max_kappa);
 
     dubins_path = dubins_path_obj.dubins_matrix(start, goal);
+
     Dubins::DubinsStateSpace::DubinsState s_state;
     s_state.x = 0;
     s_state.y = 0;
