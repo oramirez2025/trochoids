@@ -46,7 +46,7 @@ catkin build
 
 
 
-### Building and Running Unit Tests
+### Building and Running Unit Tests and Benchmarks
 
 To build the unit tests and run them (optional), run the following command:
 
@@ -66,6 +66,11 @@ roslaunch trochoids unit_test.launch
 ```
 
 This will run all the unit tests contained in unit_test_trochoid.cpp and unit_test_trochoid_classification.cpp. Examples of code usage can be found in the unit tests or in the following section.
+
+### Running Benchmarks
+```bash
+./devel/lib/trochoids/trochoids-benchmark 
+```
 
 ### Visualizing 3D unit test paths
 
