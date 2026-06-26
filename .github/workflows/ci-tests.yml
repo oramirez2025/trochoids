@@ -16,34 +16,59 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    container: 
-      image: bradygm/trochoids-test
     if: "always() && !contains(github.event.head_commit.message, 'DO-NOT-RUN')"
+    env:
+      ROS_DISTRO: noetic
+      CI_IMAGE: trochoids-ci:latest
     steps:
     - name: 'Preparing workspace'
       uses: actions/checkout@v3
       with:
         path: ws/src/
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build CI image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./ws/src/Docker
+        file: ./ws/src/Docker/Dockerfile
+        load: true
+        tags: ${{ env.CI_IMAGE }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: build workspace
       run: |
-        cd ws/
-        catkin config --extend /opt/ros/$ROS_DISTRO 
-        catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
-        catkin build
-        catkin build --make-args tests -- trochoids
+        docker run --rm \
+          -v "$PWD:/github/workspace" \
+          -v "$PWD/ws:/ws" \
+          -w /github/workspace \
+          $CI_IMAGE \
+          bash -lc '
+            cd /ws
+            catkin config --extend /opt/ros/$ROS_DISTRO
+            catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
+            catkin build
+            catkin build --make-args tests -- trochoids
+          '
 
     # Run benchmark with `go test -bench` and stores the output to a file
     # --benchmark_repetitions=12 --benchmark_min_time=0.042
     - name: Run benchmark
       shell: bash
       run: |
-        source /opt/ros/noetic/setup.bash
-        source ws/devel/setup.bash
-        ./ws/devel/lib/trochoids/trochoids-benchmark --benchmark_format=json | tee benchmark_result.json
-        git config --global user.name "Github Action"
-        git config --global user.email "github@github.com"
+        docker run --rm \
+          -v "$PWD:/github/workspace" \
+          -v "$PWD/ws:/ws" \
+          -w /github/workspace \
+          $CI_IMAGE \
+          bash -lc '
+            source /opt/ros/noetic/setup.bash
+            source /ws/devel/setup.bash
+            ./ws/devel/lib/trochoids/trochoids-benchmark --benchmark_format=json | tee benchmark_result.json
+          '
 
     # Download previous benchmark result from cache (if exists)
     - name: Download previous benchmark data
@@ -76,9 +101,16 @@ jobs:
     - name: Run unit tests
       shell: bash
       run: |
-        source /opt/ros/noetic/setup.bash
-        source ws/devel/setup.bash
-        ./ws/devel/lib/trochoids/trochoids-test
+        docker run --rm \
+          -v "$PWD:/github/workspace" \
+          -v "$PWD/ws:/ws" \
+          -w /github/workspace \
+          $CI_IMAGE \
+          bash -lc '
+            source /opt/ros/noetic/setup.bash
+            source /ws/devel/setup.bash
+            ./ws/devel/lib/trochoids/trochoids-test
+          '
 
 
 # name: Save results to gh-pages
@@ -158,4 +190,5 @@ jobs:
 #         alert-threshold: 200%
 #         auto-push: true
 #     # Upload the updated cache file for the next job by actions/cache
+     
       
