@@ -123,6 +123,7 @@ TEST(TestChebyshev, random_BBB_wind){
     std::uniform_real_distribution<> kappaRange(0.001, max_kappa);
     std::uniform_real_distribution<> disWind(-35, 35);
     std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
+    trochoid.include_BBB = true;
     // auto start_time = ompl::time::now();
 
     // double old_method_time = 0;
@@ -130,7 +131,7 @@ TEST(TestChebyshev, random_BBB_wind){
 
     for (int i = 0; i < 10000; i++)
     {   
-        if(i % 1000 == 0 && i != 0)
+        if(i % 5 == 0 && i != 0)
             std::cout << "Iteration number: " << i << std::endl;
 
         trochoid.problem.wind = {disWind(gen), disWind(gen)};
