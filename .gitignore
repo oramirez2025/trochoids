@@ -18,6 +18,7 @@ browse.vc.db
 test_trochoids*
 *.m~
 build
+build_ros2
 
 __pycache__
 *.pyc
