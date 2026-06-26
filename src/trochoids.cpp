@@ -797,7 +797,15 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
 
         for (size_t i = 0; i < t1.size(); i++)
         {
+            if (t1[i] < 0.0 || t1[i] >= 2 * t_2pi)
+            {
+                continue;
+            }
             double var = func(t1[i], k);
+            if (std::abs(var) > EPSILON)
+            {
+                continue;
+            }
             double t2 = (del1 / del2) * t1[i] + ((trochoids::WrapTo2Pi(phi1 - phi2) + 2 * k * M_PI) / (del2 * w));
             if (t2 <= -t_2pi || t2 > t_2pi) {
                 continue;
