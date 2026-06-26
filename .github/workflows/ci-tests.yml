@@ -3,14 +3,14 @@ name: Build, Test, and Benchmark
 on:
   push:
     branches:
-        - master
+        - main
         - develop
         - pipeline-test
         - modified_dubins
   pull_request:
     types: [opened, reopened]
     branches:
-        - master
+        - main
         - develop
 
 jobs:
