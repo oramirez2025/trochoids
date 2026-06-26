@@ -735,12 +735,17 @@ Path trochoids::Trochoid::get_path_BBB(double t_a, double t_b, double T)
 }
 double trochoids::Trochoid::get_length(Path path)
 {
+    if (path.size() < 2)
+    {
+        return 0.0;
+    }
+
     double length(0.0);
-    for (int i=0; i < path.size()-1; i++)
+    for (size_t i = 0; i + 1 < path.size(); ++i)
     {
         // Compute the euclidean distance between two paths
-        double dx = std::get<0>(path[i+1]) - std::get<0>(path[i]);
-        double dy = std::get<1>(path[i+1]) - std::get<1>(path[i]);
+        double dx = std::get<0>(path[i + 1]) - std::get<0>(path[i]);
+        double dy = std::get<1>(path[i + 1]) - std::get<1>(path[i]);
         length += sqrt(dx*dx + dy*dy);
     }
     return length;
