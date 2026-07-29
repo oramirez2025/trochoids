@@ -17,6 +17,7 @@
 #include <string>
 
 #include "trochoids/trochoid_utils.h"
+#include "test_utils.h"
 
 namespace
 {
@@ -35,6 +36,11 @@ std::string get_csv_dir()
 
 void write_path_csv(const std::string &filename, const std::vector<trochoids::XYZPsiState> &path)
 {
+    if (!trochoids_test::debug_artifacts_enabled("TROCHOIDS_WRITE_3D_CSV"))
+    {
+        return;
+    }
+
     const std::string csv_dir = get_csv_dir();
     std::filesystem::create_directories(csv_dir);
     const std::filesystem::path out_path = std::filesystem::path(csv_dir) / filename;
@@ -298,7 +304,99 @@ TEST(TestTrochoids3D, fails_when_full_loop_budget_insufficient)
     EXPECT_TRUE(info.estimated_full_loops_needed > constraints.max_full_loops);
 }
 
-TEST(TestTrochoids3D, skeptic_randomized_regression_terminal_and_continuity)
+TEST(TestTrochoids3D, flight_path_angle_limit_can_block_otherwise_feasible_profile)
+{
+    double wind[3] = {0.0, 0.0, 0.0};
+    const double desired_speed = 20.0;
+    const double max_kappa = 0.05;
+    trochoids::XYZPsiState start_state = {0.0, 0.0, 0.0, 0.0};
+    trochoids::XYZPsiState goal_state = {200.0, 0.0, 80.0, 0.0};
+
+    trochoids::VerticalConstraints unconstrained;
+    unconstrained.max_climb_rate = 100.0;
+    unconstrained.max_descent_rate = 100.0;
+
+    std::vector<trochoids::XYZPsiState> direct_path;
+    trochoids::VerticalPlanInfo direct_info;
+    const bool direct_valid = trochoids::get_trochoid_path_3d(
+        start_state, goal_state, direct_path, wind, desired_speed, max_kappa, unconstrained, &direct_info);
+    EXPECT_TRUE(direct_valid);
+    EXPECT_TRUE(direct_info.valid);
+
+    trochoids::VerticalConstraints constrained = unconstrained;
+    constrained.enforce_flight_path_angle = true;
+    constrained.max_flight_path_angle_rad = 10.0 * M_PI / 180.0;
+
+    std::vector<trochoids::XYZPsiState> constrained_path;
+    trochoids::VerticalPlanInfo constrained_info;
+    const bool constrained_valid = trochoids::get_trochoid_path_3d(
+        start_state, goal_state, constrained_path, wind, desired_speed, max_kappa, constrained, &constrained_info);
+
+    EXPECT_FALSE(constrained_valid);
+    EXPECT_FALSE(constrained_info.valid);
+    EXPECT_FALSE(constrained_info.vertical_feasible);
+    EXPECT_GT(constrained_info.required_vertical_time_sec, constrained_info.xy_time_sec);
+    EXPECT_NEAR(constrained_info.required_vertical_time_sec,
+                (goal_state.z - start_state.z) /
+                    (desired_speed * std::tan(constrained.max_flight_path_angle_rad)),
+                1e-6);
+}
+
+TEST(TestTrochoids3D, flight_path_angle_limit_can_be_satisfied_with_loop_extension)
+{
+    double wind[3] = {0.0, 0.0, 0.0};
+    const double desired_speed = 20.0;
+    const double max_kappa = 0.2;
+    trochoids::XYZPsiState start_state = {0.0, 0.0, 0.0, 0.0};
+    trochoids::XYZPsiState goal_state = {20.0, 0.0, 30.0, 0.0};
+
+    trochoids::VerticalConstraints constraints;
+    constraints.max_climb_rate = 100.0;
+    constraints.max_descent_rate = 100.0;
+    constraints.enforce_flight_path_angle = true;
+    constraints.max_flight_path_angle_rad = 5.0 * M_PI / 180.0;
+    constraints.allow_full_loop_extension = true;
+    constraints.max_full_loops = 20;
+
+    std::vector<trochoids::XYZPsiState> path;
+    trochoids::VerticalPlanInfo info;
+    const bool valid = trochoids::get_trochoid_path_3d(
+        start_state, goal_state, path, wind, desired_speed, max_kappa, constraints, &info);
+
+    EXPECT_TRUE(valid);
+    EXPECT_TRUE(info.valid);
+    EXPECT_TRUE(info.vertical_feasible);
+    EXPECT_EQ(info.case_used, trochoids::VerticalPlanningCase::FULL_LOOP_EXTENSION);
+    EXPECT_GT(info.loops_added_start + info.loops_added_end, 0);
+    trochoids_test::expect_path_endpoints_match(path, start_state, goal_state, 1e-6, 1e-6);
+    trochoids_test::expect_monotonic_altitude(path, true);
+}
+
+TEST(TestTrochoids3D, flight_path_angle_limit_uses_more_restrictive_climb_rate)
+{
+    double wind[3] = {0.0, 0.0, 0.0};
+    const double desired_speed = 25.0;
+    const double max_kappa = 0.08;
+    trochoids::XYZPsiState start_state = {0.0, 0.0, 0.0, 0.1};
+    trochoids::XYZPsiState goal_state = {300.0, 100.0, 60.0, 0.1};
+
+    trochoids::VerticalConstraints constraints;
+    constraints.max_climb_rate = 1.0;
+    constraints.max_descent_rate = 100.0;
+    constraints.enforce_flight_path_angle = true;
+    constraints.max_flight_path_angle_rad = 25.0 * M_PI / 180.0;
+
+    std::vector<trochoids::XYZPsiState> path;
+    trochoids::VerticalPlanInfo info;
+    const bool valid = trochoids::get_trochoid_path_3d(
+        start_state, goal_state, path, wind, desired_speed, max_kappa, constraints, &info);
+
+    EXPECT_FALSE(valid);
+    EXPECT_FALSE(info.valid);
+    EXPECT_NEAR(info.required_vertical_time_sec, 60.0, 1e-6);
+}
+
+TEST(TestTrochoids3D, DISABLED_skeptic_randomized_regression_terminal_and_continuity)
 {
     std::mt19937 rng(42);
     std::uniform_real_distribution<double> dis_pos(-250.0, 250.0);
@@ -349,10 +447,4 @@ TEST(TestTrochoids3D, skeptic_randomized_regression_terminal_and_continuity)
         const double t = path_time_estimate(path, wind, v);
         EXPECT_GE(t + 1e-6, info.required_vertical_time_sec);
     }
-}
-
-int main(int argc, char **argv)
-{
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }

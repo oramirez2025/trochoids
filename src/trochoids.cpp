@@ -735,12 +735,17 @@ Path trochoids::Trochoid::get_path_BBB(double t_a, double t_b, double T)
 }
 double trochoids::Trochoid::get_length(Path path)
 {
+    if (path.size() < 2)
+    {
+        return 0.0;
+    }
+
     double length(0.0);
-    for (int i=0; i < path.size()-1; i++)
+    for (size_t i = 0; i + 1 < path.size(); ++i)
     {
         // Compute the euclidean distance between two paths
-        double dx = std::get<0>(path[i+1]) - std::get<0>(path[i]);
-        double dy = std::get<1>(path[i+1]) - std::get<1>(path[i]);
+        double dx = std::get<0>(path[i + 1]) - std::get<0>(path[i]);
+        double dy = std::get<1>(path[i + 1]) - std::get<1>(path[i]);
         length += sqrt(dx*dx + dy*dy);
     }
     return length;
@@ -794,6 +799,18 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
         }
 
         t1.erase(last, t1.end());
+        if (this->use_Chebyshev)
+        {
+            for (double &root : t1)
+            {
+                const double refined = newtonRaphson(root, k, 20);
+                if (refined >= 0.0 && refined < 2 * t_2pi &&
+                    std::abs(func(refined, k)) < std::abs(func(root, k)))
+                {
+                    root = refined;
+                }
+            }
+        }
 
         for (size_t i = 0; i < t1.size(); i++)
         {
@@ -1115,28 +1132,21 @@ double trochoids::Trochoid::derivfunc(double t, double k)
 
 double trochoids::Trochoid::newtonRaphson(double x, double k, int idx_max)
 {
-    double d = derivfunc(x, k);
-    if (abs(d) < EPSILON)
+    for (int iter = 0; iter < idx_max; ++iter)
     {
-        return x;
-    }
-    double h = func(x, k) / d;  // Line search
-    int iter = 0;
-    while (abs(h) >= EPSILON)
-    {
-        d = derivfunc(x, k);
+        const double value = func(x, k);
+        if (abs(value) < EPSILON)
+        {
+            break;
+        }
+
+        const double d = derivfunc(x, k);
         if (abs(d) < EPSILON)
         {
             break;
         }
-        h = func(x, k)/d;
 
-        iter++;
-        if (iter > idx_max)
-        {
-            break;
-        }
-        x = x - h;
+        x -= value / d;
     }
     return x;
 }
@@ -1179,7 +1189,7 @@ double trochoids::Trochoid::bisection_root(double k, double left, double right, 
     {
         mid = 0.5 * (left + right);
         double f_mid = func(mid, k);
-        if (abs(f_mid) < EPSILON || abs(right - left) < EPSILON)
+        if (abs(f_mid) < EPSILON)
         {
             break;
         }
@@ -1234,19 +1244,20 @@ double trochoids::Trochoid::brent_root(double k, double left, double right, int 
 
         if (std::abs(fc) < std::abs(fb))
         {
-            const double a_old = a;
-            const double fa_old = fa;
+            const double b_old = b;
+            const double fb_old = fb;
             a = b;
             fa = fb;
             b = c;
             fb = fc;
-            c = a_old;
-            fc = fa_old;
+            c = b_old;
+            fc = fb_old;
         }
 
-        const double tol = 2.0 * std::numeric_limits<double>::epsilon() * std::abs(b) + EPSILON;
+        const double tol = 2.0 * std::numeric_limits<double>::epsilon() *
+                           std::max(1.0, std::abs(b));
         const double m = 0.5 * (c - b);
-        if (std::abs(m) <= tol || std::abs(fb) < EPSILON)
+        if (std::abs(fb) < EPSILON || std::abs(m) <= tol)
         {
             return b;
         }
@@ -1315,11 +1326,11 @@ double trochoids::Trochoid::bisection_derivative_root(double k, double left, dou
     double d_left = derivfunc(left, k);
     double d_right = derivfunc(right, k);
 
-    if (std::abs(d_left) < EPSILON)
+    if (d_left == 0.0)
     {
         return left;
     }
-    if (std::abs(d_right) < EPSILON)
+    if (d_right == 0.0)
     {
         return right;
     }
@@ -1333,7 +1344,9 @@ double trochoids::Trochoid::bisection_derivative_root(double k, double left, dou
     {
         mid = 0.5 * (left + right);
         const double d_mid = derivfunc(mid, k);
-        if (std::abs(d_mid) < EPSILON || std::abs(right - left) < EPSILON)
+        const double tol = 2.0 * std::numeric_limits<double>::epsilon() *
+                           std::max(1.0, std::abs(mid));
+        if (d_mid == 0.0 || std::abs(right - left) <= tol)
         {
             break;
         }
@@ -1461,7 +1474,6 @@ std::vector<double> trochoids::Trochoid::find_roots_1d_global_brent(double k, do
     }
 
     const double step = (t_max - t_min) / static_cast<double>(num_intervals);
-    const double tangent_tol = 50.0 * EPSILON;
 
     auto add_root = [&roots, t_min, t_max](double root)
     {
@@ -1514,7 +1526,7 @@ std::vector<double> trochoids::Trochoid::find_roots_1d_global_brent(double k, do
         if (d_left * d_right < 0.0)
         {
             const double extremum = bisection_derivative_root(k, left, right, idx_max);
-            if (!std::isnan(extremum) && std::abs(func(extremum, k)) < tangent_tol)
+            if (!std::isnan(extremum) && std::abs(func(extremum, k)) < EPSILON)
             {
                 add_root(extremum);
             }
@@ -1627,6 +1639,27 @@ std::vector<double> trochoids::Trochoid::find_roots_1d_bracketed(double k, doubl
         left = right;
         f_left = f_right;
     }
+
+    left = t_min;
+    double d_left = derivfunc(left, k);
+    for (int i = 1; i <= num_intervals; ++i)
+    {
+        const double right = (i == num_intervals) ? t_max : t_min + i * step;
+        const double d_right = derivfunc(right, k);
+
+        if (d_left * d_right < 0.0)
+        {
+            const double extremum = bisection_derivative_root(k, left, right, idx_max);
+            if (!std::isnan(extremum) && std::abs(func(extremum, k)) < EPSILON)
+            {
+                roots.push_back(extremum);
+            }
+        }
+
+        left = right;
+        d_left = d_right;
+    }
+
     return roots;
 }
 
