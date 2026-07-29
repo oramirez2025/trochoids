@@ -59,13 +59,44 @@ Source the workspace.
 ```bash
 source devel/setup.bash # devel/setup.zsh if using zsh
 ```
-And then launch the unit tests with
+The randomized failure-discovery sweeps are built as a separate
+`trochoids-random-test` executable and carry the CTest label `long_random`.
+Run the fast unit tests from the package build directory with:
 
 ```bash
-roslaunch trochoids unit_test.launch
+# From <workspace>/build/trochoids
+ctest --output-on-failure -LE long_random -j4
 ```
 
-This will run all the unit tests contained in unit_test_trochoid.cpp and unit_test_trochoid_classification.cpp. Examples of code usage can be found in the unit tests or in the following section.
+Run the long randomized suite periodically with:
+
+```bash
+# From <workspace>/build/trochoids
+ctest --output-on-failure -L long_random
+```
+
+To run every test, including the long randomized suite:
+
+```bash
+# From <workspace>/build/trochoids
+ctest --output-on-failure -j4
+```
+
+Individual test executables and GoogleTest filters can also be run from the
+workspace root. For example:
+
+```bash
+./devel/lib/trochoids/trochoids-chebyshev-test \
+  --gtest_filter="TestChebyshev.root_solver_1d_all_methods_match_fixed_cases"
+
+./devel/lib/trochoids/trochoids-random-test \
+  --gtest_filter="RandomizedDiscovery.compare_bbb_methods_without_wind"
+```
+
+The fast tests are split across the core, classification, Chebyshev, and 3D
+test executables. The randomized executable samples many generated states to
+search for new failure cases and also tests the slower 2D methods, so it is intentionally excluded from the normal
+fast-test command above.
 
 ### Running Benchmarks
 ```bash

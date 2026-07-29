@@ -39,6 +39,9 @@
 #include "trochoids/trochoid_utils.h"
 #include <iostream>
 #include <fstream>
+#include <random>
+
+#include "test_utils.h"
 
 #define HOME_PATH "/<path-to-where-you-want-to-save-files>"
 
@@ -96,6 +99,51 @@ public:
         max_kappa = 0.1;
    } 
 };
+
+namespace
+{
+void run_dubins_matrix_random_comparison(int num_cases, int seed)
+{
+    std::mt19937 gen(seed);
+    std::uniform_real_distribution<> disRange(-1000, 1000);
+    std::uniform_real_distribution<> kappaRange(0.005, 0.01);
+    std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
+
+    for (int i = 0; i < num_cases; i++)
+    {
+        const double max_kappa = kappaRange(gen);
+
+        Dubins::DubinsStateSpace::DubinsState start_state = {disRange(gen), disRange(gen), disPhi(gen)};
+        Dubins::DubinsStateSpace::DubinsState goal_state = {disRange(gen), disRange(gen), disPhi(gen)};
+
+        Dubins::DubinsStateSpace dubins_path_object(1 / max_kappa);
+        Dubins::DubinsStateSpace::DubinsPath dubins_path_matrix = dubins_path_object.dubins_matrix(start_state, goal_state);
+        Dubins::DubinsStateSpace::DubinsPath dubins_path = dubins_path_object.dubins(start_state, goal_state);
+
+        const double dubins_matrix_path_length = dubins_path_matrix.length();
+        const double dubins_path_length = dubins_path.length();
+
+        if (!trochoids_test::ratio_within(dubins_matrix_path_length, dubins_path_length, 1e-5))
+        {
+            std::cout << "Dubins Matrix Path Length: " << dubins_matrix_path_length << std::endl;
+            std::cout << "Dubins Path Length: " << dubins_path_length << std::endl;
+            std::cout << "Max_Kappa: " << max_kappa << std::endl;
+            std::cout << "Start State: " << start_state.x << ", " << start_state.y << ", " << start_state.theta << std::endl;
+            std::cout << "Goal State: " << goal_state.x << ", " << goal_state.y << ", " << goal_state.theta << std::endl;
+            std::cout << "Dubins Matrix Path Type: "
+                      << dubins_path_matrix.type_[0] << ", "
+                      << dubins_path_matrix.type_[1] << ", "
+                      << dubins_path_matrix.type_[2] << std::endl;
+            std::cout << "Dubins Path Type: "
+                      << dubins_path.type_[0] << ", "
+                      << dubins_path.type_[1] << ", "
+                      << dubins_path.type_[2] << std::endl;
+        }
+
+        EXPECT_TRUE(std::abs(dubins_matrix_path_length - dubins_path_length) <= 1e-5);
+    }
+}
+}  // namespace
 
 // // No wind conditions
 TEST_F(TrochoidTestFixture, DISABLED_no_wind)
@@ -279,49 +327,9 @@ TEST_F(TrochoidTestFixture, wind_trochoid_single)
 //     }
 // }
 
-TEST_F(DubinsTestFixture, dubins_matrix_test_random)
+TEST_F(DubinsTestFixture, DISABLED_dubins_matrix_test_random)
 {
-    // Call Random Start and Goal states:
-    std::random_device rd;
-    std::mt19937 gen = std::mt19937(rd());
-    std::uniform_real_distribution<> disRange(-1000, 1000);
-    std::uniform_real_distribution<> kappaRange(0.005, 0.01);
-    std::uniform_real_distribution<> disPhi(0.0, 2.0 * M_PI);
-
-    for (int i = 0; i < 100000; i++)
-    {   
-        // if(i % 10000 == 0 && i != 0)
-        //     std::cout << "Iteration number: " << i << std::endl;
-
-        max_kappa = kappaRange(gen);
-        
-        Dubins::DubinsStateSpace::DubinsState start_state = {disRange(gen), disRange(gen), disPhi(gen)};
-        Dubins::DubinsStateSpace::DubinsState goal_state = {disRange(gen), disRange(gen), disPhi(gen)};
-
-        Dubins::DubinsStateSpace::DubinsPath dubins_path_matrix;
-        Dubins::DubinsStateSpace::DubinsPath dubins_path;
-        Dubins::DubinsStateSpace dubins_path_object(1/max_kappa);
-
-        dubins_path_matrix = dubins_path_object.dubins_matrix(start_state, goal_state);
-        dubins_path = dubins_path_object.dubins(start_state, goal_state);
-
-        double dubins_matrix_path_length = dubins_path_matrix.length();
-        double dubins_path_length = dubins_path.length();
-
-        if (abs(dubins_matrix_path_length - dubins_path_length) > 1e-5)
-        {
-            std::cout << "Dubins Matrix Path Length: " << dubins_matrix_path_length << std::endl;
-            std::cout << "Dubins Path Length: " << dubins_path_length << std::endl;
-            std::cout << "Max_Kappa: " << max_kappa << std::endl;
-
-            std::cout << "Start State: " << start_state.x << ", " << start_state.y << ", " << start_state.theta << std::endl;
-            std::cout << "Goal State: " << goal_state.x << ", " << goal_state.y << ", " << goal_state.theta << std::endl;
-
-            std::cout << "Dubins Matrix Path Type: " << dubins_path_matrix.type_[0] << ", " << dubins_path_matrix.type_[1] << ", " << dubins_path_matrix.type_[2] << std::endl;
-            std::cout << "Dubins Path Type: " << dubins_path.type_[0] << ", " << dubins_path.type_[1] << ", " << dubins_path.type_[2] << std::endl;
-        }
-        EXPECT_TRUE(abs(dubins_matrix_path_length - dubins_path_length) <= 1e-5);
-    }
+    run_dubins_matrix_random_comparison(250, 42);
 }
 
 TEST_F(DubinsTestFixture, failure_case_dubins_matrix)
@@ -1251,5 +1259,3 @@ also make it so k and m could be reduced?
 
 
 */
-
-

@@ -89,21 +89,26 @@ if(CATKIN_ENABLE_TESTING)
   #             include/trochoids/DubinsStateSpace.h
   #             include/trochoids/trochoid_utils.h)
 
-  catkin_add_gtest(${PROJECT_NAME}-test test/unit_test_trochoids.cpp
-                                        src/trochoids.cpp
-                                        src/trochoid_utils.cpp
-  )
-  if(TARGET ${PROJECT_NAME}-test)
-    target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME} ${catkin_LIBRARIES} )
-  endif()
+  function(add_trochoids_gtest target_name test_source)
+    catkin_add_gtest(${target_name}
+                     test/test_main.cpp
+                     ${test_source})
+    if(TARGET ${target_name})
+      target_link_libraries(${target_name} ${PROJECT_NAME} ${catkin_LIBRARIES})
+    endif()
+    if(ARGC GREATER 2)
+      set_tests_properties(_ctest_${PROJECT_NAME}_gtest_${target_name}
+                           PROPERTIES LABELS "${ARGV2}")
+    endif()
+  endfunction()
 
-  catkin_add_gtest(${PROJECT_NAME}-3d-test test/unit_test_trochoids_3d.cpp
-                                           src/trochoids.cpp
-                                           src/trochoid_utils.cpp
-  )
-  if(TARGET ${PROJECT_NAME}-3d-test)
-    target_link_libraries(${PROJECT_NAME}-3d-test ${PROJECT_NAME} ${catkin_LIBRARIES})
-  endif()
+  add_trochoids_gtest(${PROJECT_NAME}-test test/unit_test_trochoids.cpp)
+  add_trochoids_gtest(${PROJECT_NAME}-classification-test test/unit_test_trochoid_classification.cpp)
+  add_trochoids_gtest(${PROJECT_NAME}-chebyshev-test test/unit_test_trochoid_chebyshev.cpp)
+  add_trochoids_gtest(${PROJECT_NAME}-3d-test test/unit_test_trochoids_3d.cpp)
+  add_trochoids_gtest(${PROJECT_NAME}-random-test
+                      test/unit_test_randomized.cpp
+                      long_random)
 
   find_package(benchmark REQUIRED)
   add_executable(${PROJECT_NAME}-benchmark test/all_benchmarks.cpp)
