@@ -37,6 +37,7 @@
 
 #include "trochoids/trochoid_utils.h"
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 typedef std::vector<std::tuple<double, double, double>> Path;
@@ -46,6 +47,56 @@ namespace
 double safe_norm(double x, double y)
 {
     return std::sqrt(x * x + y * y);
+}
+
+bool is_finite_state(const trochoids::XYZPsiState &state)
+{
+    return std::isfinite(state.x) &&
+           std::isfinite(state.y) &&
+           std::isfinite(state.z) &&
+           std::isfinite(state.psi);
+}
+
+bool is_valid_xy_request(const trochoids::XYZPsiState &s1,
+                         const trochoids::XYZPsiState &s2,
+                         const double *wind,
+                         double v,
+                         double max_kappa,
+                         double waypoint_distance)
+{
+    return wind != nullptr &&
+           is_finite_state(s1) &&
+           is_finite_state(s2) &&
+           std::isfinite(wind[0]) &&
+           std::isfinite(wind[1]) &&
+           std::isfinite(wind[2]) &&
+           std::isfinite(v) &&
+           std::isfinite(max_kappa) &&
+           std::isfinite(waypoint_distance) &&
+           v > EPSILON &&
+           max_kappa > EPSILON &&
+           waypoint_distance >= 0.0;
+}
+
+bool is_valid_vertical_constraints(const trochoids::VerticalConstraints &constraints)
+{
+    return !std::isnan(constraints.max_climb_rate) &&
+           !std::isnan(constraints.max_descent_rate) &&
+           std::isfinite(constraints.max_flight_path_angle_rad) &&
+           constraints.max_climb_rate >= 0.0 &&
+           constraints.max_descent_rate >= 0.0 &&
+           constraints.max_flight_path_angle_rad >= 0.0 &&
+           constraints.max_full_loops >= 0;
+}
+
+double interpolation_alpha(size_t index, size_t total_points)
+{
+    if (total_points <= 1)
+    {
+        return 1.0;
+    }
+    return static_cast<double>(index) /
+           static_cast<double>(total_points - 1);
 }
 
 double effective_vertical_rate_limit(const trochoids::VerticalConstraints &constraints,
@@ -219,6 +270,11 @@ bool trochoids::get_trochoid_path_numerical(const XYZPsiState &s1,
                                             bool exhaustive_solve_only,
                                             double waypoint_distance)
 {
+    if (!is_valid_xy_request(s1, s2, wind, v, max_kappa, waypoint_distance))
+    {
+        return false;
+    }
+
     trochoids::Trochoid trochoid;
     trochoid.problem.v = v;
     trochoid.problem.wind = {wind[0], wind[1]};
@@ -238,7 +294,7 @@ bool trochoids::get_trochoid_path_numerical(const XYZPsiState &s1,
         new_state.x = std::get<0>(path[i]);
         new_state.y = std::get<1>(path[i]);
         new_state.psi = std::get<2>(path[i]);
-        new_state.z = s1.z + ((static_cast<double>(i)) / static_cast<double>(path.size())) * (s2.z - s1.z);
+        new_state.z = s1.z + interpolation_alpha(i, path.size()) * (s2.z - s1.z);
 
         extended_path_out.push_back(new_state);
     }
@@ -259,6 +315,16 @@ bool trochoids::get_trochoid_path_3d(const XYZPsiState &s1,
     local_info.valid = false;
     local_info.vertical_feasible = false;
     local_info.case_used = VerticalPlanningCase::NONE;
+
+    if (!is_valid_xy_request(s1, s2, wind, v, max_kappa, waypoint_distance) ||
+        !is_valid_vertical_constraints(vertical_constraints))
+    {
+        if (plan_info != nullptr)
+        {
+            *plan_info = local_info;
+        }
+        return false;
+    }
 
     const double dz = s2.z - s1.z;
     const bool climbing = dz >= 0.0;
@@ -467,6 +533,11 @@ bool trochoids::get_trochoid_path(const XYZPsiState &s1,
                                 double max_kappa,
                                 double waypoint_distance)
 {
+    if (!is_valid_xy_request(s1, s2, wind, v, max_kappa, waypoint_distance))
+    {
+        return false;
+    }
+
     trochoids::Trochoid trochoid;
     trochoid.problem.v = v;
     trochoid.problem.wind = {wind[0], wind[1]};
@@ -485,7 +556,7 @@ bool trochoids::get_trochoid_path(const XYZPsiState &s1,
         new_state.x = std::get<0>(path[i]);
         new_state.y = std::get<1>(path[i]);
         new_state.psi = std::get<2>(path[i]);
-        new_state.z = s1.z + ((static_cast<double>(i)) / static_cast<double>(path.size())) * (s2.z - s1.z);
+        new_state.z = s1.z + interpolation_alpha(i, path.size()) * (s2.z - s1.z);
 
         extended_path_out.push_back(new_state);
     }
@@ -498,6 +569,11 @@ double trochoids::get_length(const XYZPsiState &s1,
                              double v,
                              double max_kappa)
 {
+    if (!is_valid_xy_request(s1, s2, wind, v, max_kappa, 0.0))
+    {
+        return 0.0;
+    }
+
     trochoids::Trochoid trochoid;
     trochoid.problem.v = v;
     trochoid.problem.wind = {wind[0], wind[1]};
@@ -516,11 +592,10 @@ double trochoids::get_length(const XYZPsiState &s1,
     {
         double x = std::get<0>(path[i]);
         double y = std::get<1>(path[i]);
-        double psi = std::get<2>(path[i]);
-        double z = s1.z + ((static_cast<double>(i)) / static_cast<double>(path.size())) * (s2.z - s1.z);
+        double z = s1.z + interpolation_alpha(i, path.size()) * (s2.z - s1.z);
         double x_ = std::get<0>(path[i + 1]);
         double y_ = std::get<1>(path[i + 1]);
-        double z_ = s1.z + ((static_cast<double>(i+1)) / static_cast<double>(path.size())) * (s2.z - s1.z);
+        double z_ = s1.z + interpolation_alpha(i + 1, path.size()) * (s2.z - s1.z);
 
         length += sqrt(pow(x_ - x, 2) + pow(y_ - y, 2) + pow(z_ - z, 2));
     }
