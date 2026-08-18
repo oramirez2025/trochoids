@@ -768,7 +768,11 @@ void trochoids::Trochoid::exhaustive_numerical_solve(double &del1, double &del2,
         if (this->use_Chebyshev)
         {
             // Cheb Method
-            auto ce = ChebTools::ChebyshevExpansion::factory(30, [k,this](double x) { return func(x,k); }, 0, 2 * t_2pi);
+            auto ce = ChebTools::ChebyshevExpansion::factory(
+                this->cheb_resolution,
+                [k, this](double x) { return func(x, k); },
+                0,
+                2 * t_2pi);
             bool only_in_domain = true;
             t1 = ce.real_roots2(only_in_domain);
             std::sort(t1.begin(), t1.end());

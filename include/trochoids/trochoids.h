@@ -91,6 +91,7 @@ public:
     RootSolve2DMethod root_solve_2d_method = RootSolve2DMethod::NEWTON_GRID;
     bool include_BBB = false; // TODO: should this be default true?
     bool use_dubins_if_low_wind = true;
+    int cheb_resolution = 30;
     int root_solve_2d_grid_samples = 360;
     int root_solve_2d_chebyshev_samples = 33;
 
