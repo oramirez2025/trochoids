@@ -984,6 +984,74 @@ static double get_numerical_path_length_for_mode(trochoids::Trochoid trochoid,
     return trochoids::Trochoid::get_length(path);
 }
 
+TEST(TestChebyshev, root_solver_1d_jaron_discovered_edge_cases_08_2026){
+    // These cases 30 does fail right now. 100 works fine. 
+    struct CaseInput {
+        std::vector<double> wind;
+        double max_kappa;
+        double expected_length;
+        std::vector<double> x0;
+        std::vector<double> xf;
+    };
+
+    const std::vector<CaseInput> cases = {
+        {{-7.94541, -10.1513, 0}, 0.0168464, 461.171,
+         {-5.16336, -6.71881, 3.35799},
+         {0.276878, -3.97018, 6.16493}},
+        {{8.67433, 2.76588, 0}, 0.00709565, 816.597,
+         {1.00575, 4.6204, 0.473108},
+         {8.33836, 8.9622, 2.53484}},
+        {{6.02455, -2.134241, 0}, 0.0105766, 670.088,
+         {-0.954153, 8.51437, 1.75389},
+         {-9.76824, -8.77098, 3.37108}}
+    };
+
+    for (size_t i = 0; i < cases.size(); ++i)
+    {
+        SCOPED_TRACE("jaron-discovered case " + std::to_string(i));
+
+        trochoids::Trochoid trochoid;
+        trochoid.problem.v = 50;
+        trochoid.problem.wind = cases[i].wind;
+        trochoid.problem.max_kappa = cases[i].max_kappa;
+        trochoid.problem.X0 = cases[i].x0;
+        trochoid.problem.Xf = cases[i].xf;
+        trochoid.use_dubins_if_low_wind = true;
+        trochoid.use_trochoid_classification = true;
+        trochoid.use_Chebyshev = true;
+
+        trochoid.cheb_resolution = 30;
+        const Path path_cheb_30 = trochoid.getTrochoid();
+        ASSERT_FALSE(path_cheb_30.empty());
+
+        trochoid.cheb_resolution = 100;
+        const Path path_cheb_100 = trochoid.getTrochoidNumerical();
+        ASSERT_FALSE(path_cheb_100.empty());
+        const double len_cheb_100 =
+            trochoids::Trochoid::get_length(path_cheb_100);
+        EXPECT_NEAR(len_cheb_100, cases[i].expected_length, 0.5);
+
+        const std::vector<trochoids::Trochoid::RootSolve1DMethod> methods = {
+            trochoids::Trochoid::RootSolve1DMethod::NEWTON_RAPHSON,
+            trochoids::Trochoid::RootSolve1DMethod::BRACKETED_BISECTION,
+            trochoids::Trochoid::RootSolve1DMethod::NON_ROBUST_BRENT,
+            trochoids::Trochoid::RootSolve1DMethod::GLOBAL_BRENT
+        };
+
+        for (const auto method : methods)
+        {
+            const double length =
+                get_numerical_path_length_for_mode(trochoid, false, method);
+            ASSERT_GT(length, 0.0);
+            std::cout << "Case " << i << ", method " << static_cast<int>(method)
+                      << ": length = " << length
+                      << ", chebyshev length = " << len_cheb_100
+                      << std::endl;
+            EXPECT_NEAR(length, len_cheb_100, 0.05 * len_cheb_100);
+        }
+    }
+}
+
 TEST(TestChebyshev, root_solver_1d_all_methods_match_fixed_cases){
     struct CaseInput {
         double v;
